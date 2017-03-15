@@ -75,8 +75,6 @@ struct kobject kobj;
 static int kobject_test_init()
 {
 	printk("kobject test_init().\n");
-	//kobject_init(&kobj);
-	//kobject_add(&ktype);
 	kobject_init_and_add(&kobj, &ktype, NULL, "kobject_test");
 	return 0;
 }
