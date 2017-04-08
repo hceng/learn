@@ -6,7 +6,7 @@
 #include <asm/uaccess.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
-#include <linux/spinlock.h>//自旋锁头文件
+#include <linux/semaphore.h>//信号量头文件
 
 static struct class *testdrv_class;
 static struct class_device	*testdrv_class_dev;
@@ -15,26 +15,19 @@ struct semaphore sem;
 
 static int test_drv_open(struct inode *inode, struct file *file)
 {
-	spin_lock(&lock);
-	if(count)
-	{
-		spin_unlock(&lock);
-		printk("kernel: open fail! count = %d\n",count);
-		return -EBUSY;
-	}
-	count++;
-	spin_unlock(&lock);
-	printk("kernel: open ok! count = %d\n",count);
+	printk("kernel:down before sem.count =  %d \n", sem.count);
+	down(&sem);
+	/*临界资源*/
+	printk("kernel:down after sem.count =  %d \n", sem.count);
 
 	return 0;
 }
 
 static int test_drv_release(struct inode *inode, struct file *file)
 {
-	spin_lock(&lock);
-	count--;
-	spin_unlock(&lock);
-	printk("kernel: release ok! count = %d\n",count);
+	printk("kernel:up before sem.count =  %d \n", sem.count);
+	up(&sem);
+	printk("kernel:up after sem.count =  %d \n", sem.count);
 
 	return 0;
 }
@@ -54,7 +47,7 @@ static int test_drv_init(void)
 
 	testdrv_class_dev = device_create(testdrv_class, NULL, MKDEV(major, 0), NULL, "semaphoretest"); 
 
-	init_;
+	sema_init(&sem, 2);//允许同时2个进程访问临界资源
 
 	printk("kernel: init ok!\n");
 	
