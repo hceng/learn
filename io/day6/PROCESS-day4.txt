@@ -1,0 +1,216 @@
+进程间通信创建的对象必须在【内核空间】中创建。
+
+
+columbus  --->  System V (了解)
+
+SYSTEM V内核通信对象：
+	共享内存、消息队列、信号灯集
+
+read   write  
+
+
+ipc对象
+ 共同特点：
+	1、存在，创建内核对象之后一直存在
+	2、key值 通过key找到内核对象（共享内存、消息队列、信号灯集）
+	3、id    标识符 
+	4、命令  ipcs/ipcrm 
+	  ipcs   用来查看对象信息
+	  ipcrm  用来删除进程通通信对象
+
+	  ipcrm -q
+
+	system V对象通信的大致流程：ppt--109页
+	注意编程框架：
+		1、通过ftok函数得到key值，让不同的进程找到内核对象
+		2、创建或者打开内核对象（共享内存、消息队列、信号灯集）
+		3、操作内核对象
+			共享内存 ：通过shmat映射内核中的共享内存到用户空间，
+						解除映射shmdt，不能再操作共享内存。
+			消息队列：通过msgsnd发送消息，msgrcv接收消息
+		4、删除内核对象
+			删除共享内存shmctl
+			删除消息队列msgctl
+
+
+
+ftok()   （熟练）
+	创建好的key为了方便其他的进程找到内核对象
+
+
+（一）共享内存特点（了解）
+共享内存：内核空间中的一块区域，由用户创建，系统维护里面的数据结构，通过获取到的描述符shmget的返回值，对共享内存进行操作
+
+特点： 
+	1、高效，因为用户可以直接对内和对象进行操作，并不需要把数据在写到自己的用户空间里，在所有的进程间通信对象中是最快的
+
+注意：
+	1、映射，共享内存的映射，就是把共享内存段的地址传递给用户空间相应数据类型的指针变量。
+
+	2、同步和互斥：
+		对共享内存进行循环操作的时候，容易出现一个进程在写操作的时候，另一个已经打读了好多次，为了能够完成写一次读一次操作，需要进行同步或者互斥。
+步骤：	
+	【1】共享内存创建  
+	shmget
+	int shmget(key_t key, size_t size, int shmflg);
+
+	功能： 创建或者打开共享内存
+		key：   通过ftok函数返回，用于让不同的进程找到内核区域中的内核对象（共享内存）
+		size：指定共享内存的大小，以字节为单位
+		shmfl：指定创建的共享内存具有什么权限
+			IPC_CREAT  | IPC_EXCL |　０６６６
+
+	【2】映射共享内存
+	shmat
+	void *shmat(int shmid, const void *shmaddr, int shmflg);
+	功能：把内核空间的共享内存映射到用户空间，（因为用户空间根内核空间不能直接访问，所以
+			通过映射的方式，简介得到这块共享内存地址）
+			shmid:【操作】共享内存的表示符
+			shmaddr： NULL有系统来分配一块共享内存
+			shmflg：  0
+
+	【3】解除映射
+	shmdt
+
+	【4】删除共享内存
+	shmctl
+	int shmctl(int shmid, int cmd, struct shmid_ds *buf);
+	功能：共享内存对象控制函数
+	通过命令，也就是第二个参数设置：
+		IPC_STAT用来获取共享内存的一些属性信息
+		IPC_RMID用来删除共享内存对象
+
+		buf：用来存储共享内存的属性信息的，需要定义一个struct  shmid_ds 的结构体
+
+
+
+（二）消息队列
+【1】消息队列机制
+
+特点：
+	1、先进先出 
+	2、按照类型发送、读取消息
+		使用ipcs -q查看系统中的消息
+
+【2】如何创建消息队列
+	msgget
+	int msgget(key_t key, int msgflg);
+	功能：创建或者打开消息队列
+	key:让不同的进程找到同一个消息队列
+	msgflg： 
+		IPC_CREAT | IPC_EXCL      | 0666
+		创建        防止重复创建    权限
+
+【3】发送消息/接收消息
+结构体1：
+	struct msgbuf {
+	               long mtype;       /* message type, must be > 0 */消息类型
+	               char mtext[1];    /* message data */消息正文
+	           };
+
+	msgsnd/msgrcv
+	 int msgsnd(int msqid, const void *msgp, size_t msgsz, int msgflg);
+	 	功能：
+	 	msgid： 消息队列标示符  （用于操作消息队列发送或者接收消息）
+	 	msgp：首先定义一个消息队列的结构体，类型如上所示结构体1
+	 	msgsz：消息队列正文（text）的大小
+	 	msgflg：设置为阻塞的方式0  非阻塞的方式 IPC_NOWAIT
+
+       ssize_t msgrcv(int msqid, void *msgp, size_t msgsz, long msgtyp,
+                      int msgflg);
+
+	 	msgid： 消息队列标示符  （用于操作消息队列发送或者接收消息）
+	 	msgp：首先定义一个消息队列的结构体，类型如上所示结构体1
+	 	msgsz：消息队列正文（text）的大小
+	 	msgtyp：消息的类型（必须是大于0的整数）
+	 	msgflg：设置为阻塞的方式0  非阻塞的方式 IPC_NOWAIT
+
+【4】删除消息队列
+	msgctl
+
+	int msgctl(int msqid, int cmd, struct msqid_ds *buf);
+	msgid： 消息队列标示符  （用于操作消息队列发送或者接收消息）
+	cmd：操作消息队列的命令   
+		IPC_STAT   获取消息队列属性信息的命令，需要定义一个struct msqid_ds结构体
+		IPC_RMID   删除消息队列的命令
+
+
+（三）信号量（灯）
+1、信号灯机制
+	信号量的集合（一个或者多个信号量，信号量是一类资源，资源的值代表了资源的数量）
+
+	实现同步：按照约定的先后顺序执行
+	互斥：  可以用两个信号量实现互斥操作
+	
+2、打开或者创建信号灯semget
+	
+	int semget(key_t key, int nsems, int semflg);
+	功能：打开或者创建信号量
+	参数
+		nsems：  信号量的数量是多少个？系统从0开始分配
+				举例：当nsems = 1则信号量是0
+					当nsems = 2则信号量分别是  0 和 1
+					当nsems = 3则信号量分别是  0 和 1  和 2
+		semflg：设置semget函数的功能：
+				IPC_CREAT | IPC_EXCL      |   0666
+				创建        防止重复创建      有效权限位
+	返回值： 成功返回信号量操作表示符
+			失败  -1
+
+3、信号灯初始化semctl
+		int semctl(int semid, int semnum, int cmd, ...);
+		功能：信号量控制函数
+		参数：  
+			semnum  操作第几个信号量 
+				举例  semnum 是 0，表示操作第0个信号量
+				举例  semnum 是 1，表示操作第1个信号量
+			cmd：  对信号量使用的命令
+					IPC_STAT   获取信号量的属性信息
+					SETVAL     初始化信号量的值，需要定义一个联合体
+								类型如下所示：
+
+					union semun {
+		               int              val;   
+		                /* Value for SETVAL */
+		               
+		               struct semid_ds *buf; 
+		                /* Buffer for IPC_STAT, IPC_SET */
+		             
+		               unsigned short  *array; 
+		                /* Array for GETALL, SETALL */
+		             
+		               struct seminfo  *__buf;  
+		               /* Buffer for IPC_INFO(Linux-specific) */
+		           };
+		    。。。：表示参数不确定
+		    	如果使用IPC_STAT、SETVAL命令，必须使用第四个参数定义一个联合体变量来接收
+		    	如果定义IPC_RMID则不用使用第四个参数																										
+
+4、信号量操作方式
+	int semop(int semid, struct sembuf *sops, unsigned nsops);
+	
+	功能：信号量的pv操作
+	sops：对信号量的操作方式
+		    unsigned short sem_num;  /* 第几个信号量*/
+           short          sem_op;   /* 信号量的PV操作
+           								正数表示释放操作、负数表示申请操作 */
+           short          sem_flg;  /*0  表示阻塞方式   IPC_NOWAIT表示非阻塞方式*/
+    nsops：表示操作几个信号量，从0开始
+
+	P申请操作
+
+		
+	V释放操作
+
+
+
+
+
+
+
+
+
+
+
+
+
