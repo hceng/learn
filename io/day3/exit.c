@@ -1,14 +1,16 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <stdlib.h>
+//#include <stdlib.h>
 
 int main(int argc, const char *argv[])
 {
-	printf("hello world ");
-#if 0 
+	printf("hello world\n");
 	_exit(5);
-#endif
-	exit(5);
-	printf("hello beijing \n");
+	//exit(5);
+	printf("hello Shenzhen\n");
 	return 0;
 }
+
+
+
+
