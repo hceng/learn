@@ -24,7 +24,7 @@ int main(int argc, const char *argv[])
 #endif
 #if 1
 	char *arg[] = {"ls", "-la", NULL};
-	if(execv("/bin/ls", arg)	 < 0)
+	if(execv("/bin/ls", arg) < 0)
 	{
 		perror("Unable to execl");
 		exit(1);

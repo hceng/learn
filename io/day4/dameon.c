@@ -28,8 +28,9 @@ int main(int argc, const char *argv[])
 		//关闭打开的文件描述符
 
 		int i, fd_w;
-		char buf[] = {"hello world \n"};
+		char buf[] = {"hello world\n"};
 
+		//getdtablesize()返回这个进程的文件描述表的项数
 		for(i = 0; i < getdtablesize(); i++)
 			close(i);
 		fd_w = open("/test123.txt", O_CREAT | O_WRONLY | O_APPEND, 0666);
