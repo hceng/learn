@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 pthread_mutex_t mutex;
 
@@ -16,6 +17,8 @@ void *pthread_fun(void * arg)
 			printf("value_1 = %d , value_2 = %d \n", value_1, value_2);
 		}
 		pthread_mutex_unlock(&mutex);
+
+		//sleep(1);
 	}
 }
 
@@ -38,7 +41,7 @@ int main(int argc, const char *argv[])
 		value_1 = count;
 		value_2 = count;
 		pthread_mutex_unlock(&mutex);
-		sleep(1);
+		//sleep(1);
 	}
 
 	pthread_join(tid, NULL);

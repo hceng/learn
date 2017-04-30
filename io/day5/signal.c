@@ -1,5 +1,6 @@
 #include <signal.h>
 #include <stdio.h>
+#include <unistd.h>
 //signo代表内核相当前进程发送的信号时什么？而我们又不清楚时那个信号
 //需要用if语句做判断
 void fun(int signo)
