@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 void *pthread_fun(void * arg)
 {
@@ -28,7 +29,7 @@ int main(int argc, const char *argv[])
 	printf("pthread start \n");
 	void * ret;
 	pthread_join(tid, &ret);
-//	while(1);
+	//while(1);
 	printf("pthread end  %s \n", (char *)ret);
 	return 0;
 }
