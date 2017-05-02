@@ -3,6 +3,8 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 
 #define N 32
 
@@ -17,25 +19,22 @@ int main(int argc, const char *argv[])
 		perror("Unable to mkfifo");
 	//	exit(1);
 	}
-
-	fd_r = open(argv[1], O_RDONLY);
-	if(fd_r < 0)
-	{
-		perror("Unable to open");
-		exit(1);
-	}
 	fd_w = open("myfifo", O_WRONLY);
 	if(fd_w < 0)
 	{
-		perror("Unable to open fd_w");
+		perror("Unable to open fd_w.");
 		exit(1);
 	}
-	printf("hello world \n");
+	printf("fifo write\n");
 
-	while((bytes = read(fd_r, buf, 32)) != 0)
+	while(1)
 	{
-		write(fd_w, buf, bytes);
+		fgets(buf, 32, stdin);
+		write(fd_w, buf, strlen(buf) + 1);
+		if(strncmp(buf, "quit", 4) == 0)
+		break;
 	}
+	close(fd_w);
 	
 	return 0;
 }	

@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 int main(int argc, const char *argv[])
 {
@@ -15,7 +16,7 @@ int main(int argc, const char *argv[])
 		perror("Unable to pipe");
 		exit(1);
 	}
-#if 0
+#if 1
 	pid = fork();
 	if(pid < 0)
 	{
