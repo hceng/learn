@@ -1,0 +1,3 @@
+---- UTRSTAT0 Matches (2 in 2 files) ----
+putc in init.c :     while (!(UTRSTAT0 & TXD0READY));
+s3c24xx.h line 38 : #define UTRSTAT0            (*(volatile unsigned long *)0x50000010)

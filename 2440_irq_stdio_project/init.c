@@ -1,0 +1,132 @@
+#include "s3c24xx.h"
+ 
+void disable_watch_dog(void);
+void memsetup(void);
+
+/*上电后，WATCH DOG默认是开着的，要把它关掉 */
+void disable_watch_dog()
+{
+	WTCON	= 0;
+}
+
+#define FCLK        200000000
+#define HCLK        100000000
+#define PCLK        50000000
+#define S3C2410_MPLL_200MHZ     ((0x5c<<12)|(0x04<<4)|(0x00))
+#define S3C2440_MPLL_200MHZ     ((0x5c<<12)|(0x01<<4)|(0x02))
+
+ 
+void clock_init(void)
+{
+    // LOCKTIME = 0x00ffffff;   
+    CLKDIVN  = 0x03;            // FCLK:HCLK:PCLK=1:2:4, HDIVN=1,PDIVN=1
+
+__asm__(
+    "mrc    p15, 0, r1, c1, c0, 0\n"      
+    "orr    r1, r1, #0xc0000000\n"     
+    "mcr    p15, 0, r1, c1, c0, 0\n"        
+    );
+
+    /* 靠縎3C2410靠S3C2440 */
+    if ((GSTATUS1 == 0x32410000) || (GSTATUS1 == 0x32410002))
+    {
+        MPLLCON = S3C2410_MPLL_200MHZ; 
+    }
+    else
+    {
+        MPLLCON = S3C2440_MPLL_200MHZ;  
+    }       
+}
+
+
+
+
+/**************************************************************************   
+* 设置控制SDRAM的13个寄存器
+* 使用位置无关代码
+**************************************************************************/   
+void memsetup(void)
+{
+	unsigned long *p = (unsigned long *)MEM_CTL_BASE;	
+	p[0] = 0x22111110;		//BWSCON
+	p[1] = 0x00000700;		//BANKCON0
+	p[2] = 0x00000700;		//BANKCON1
+	p[3] = 0x00000700;		//BANKCON2
+	p[4] = 0x00000700;		//BANKCON3	
+	p[5] = 0x00000700;		//BANKCON4
+	p[6] = 0x00000700;		//BANKCON5
+	p[7] = 0x00018005;		//BANKCON6
+	p[8] = 0x00018005;		//BANKCON7
+	p[9] = 0x008e04f4;		//REFRESH,HCLK=12MHz:0x008e07a3,HCLK=100MHz:0x008e04f4
+	p[10] = 0x000000b2;		//BANKSIZE
+	p[11] = 0x00000030;		//MRSRB6
+	p[12] = 0x00000030;		//MRSRB7
+}
+
+
+
+
+/*
+ * LED1,LED2,LED4对应GPF4、GPF5、GPF6
+ */
+#define	GPF4_out	(1<<(4*2))
+#define	GPF5_out	(1<<(5*2))
+#define	GPF6_out	(1<<(6*2))
+
+#define	GPF4_msk	(3<<(4*2))
+#define	GPF5_msk	(3<<(5*2))
+#define	GPF6_msk	(3<<(6*2))
+
+/*
+ * S2,S3,S4对应GPF0、GPF2、GPG3
+ */
+#define GPF0_eint     (0x2<<(0*2))
+#define GPF2_eint     (0x2<<(2*2))
+#define GPG3_eint     (0x2<<(3*2))
+
+#define GPF0_msk    (3<<(0*2))
+#define GPF2_msk    (3<<(2*2))
+#define GPG3_msk    (3<<(3*2))
+
+void init_led(void)
+{
+    // LED1,LED2,LED4对应的3根引脚设为输出
+    GPFCON &= ~(GPF4_msk | GPF5_msk | GPF6_msk);
+    GPFCON |= GPF4_out | GPF5_out | GPF6_out;
+}
+
+/*
+ * 初始化GPIO引脚为外部中断
+ * GPIO引脚用作外部中断时，默认为低电平触发、IRQ方式(不用设置INTMOD)
+ */ 
+void init_irq( )
+{
+    // S2,S3对应的2根引脚设为中断引脚 EINT0,ENT2
+    GPFCON &= ~(GPF0_msk | GPF2_msk);
+    GPFCON |= GPF0_eint | GPF2_eint;
+
+    // S4对应的引脚设为中断引脚EINT11
+    GPGCON &= ~GPG3_msk;
+    GPGCON |= GPG3_eint;
+    
+    // 对于EINT11，需要在EINTMASK寄存器中使能它
+    EINTMASK &= ~(1<<11);
+        
+    /*
+     * 设定优先级：
+     * ARB_SEL0 = 00b, ARB_MODE0 = 0: REQ1 > REQ3，即EINT0 > EINT2
+     * 仲裁器1、6无需设置
+     * 最终：
+     * EINT0 > EINT2 > EINT11即K2 > K3 > K4
+     */
+    PRIORITY = (PRIORITY & ((~0x01) | (0x3<<7))) | (0x0 << 7) ;
+
+    // EINT0、EINT2、EINT8_23使能
+    INTMSK   &= (~(1<<0)) & (~(1<<2)) & (~(1<<5));
+}
+
+
+
+
+
+
