@@ -53,7 +53,7 @@ Reset:
 	ldr r1, =(0x5c<<12)|(0x01<<4)|(0x01)
 	str r1, [r0]
 
-/*优化速度： 启动ICACHE */
+/*优化速度： 启动ICACHE*/
 	mrc p15, 0, r0, c1, c0, 0	 	@ read control reg
 	orr r0, r0, #(1<<12)
 	mcr	p15, 0, r0, c1, c0, 0    	@ write it back

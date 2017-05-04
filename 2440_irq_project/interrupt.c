@@ -3,7 +3,7 @@
 
 void delay(void)
 {
-	unsigned int i = 2000000;
+	volatile unsigned int i = 1000000;
 	while(i--);
 	
 }
@@ -17,27 +17,42 @@ void IRQ_Handle()
 
         case 0: 
         {   
-			puts("led1_1.\n\r");
-            GPFDAT |= (0x7<<4);   
-            GPFDAT &= ~(1<<4);     
+            delay();
+            oft = INTOFFSET;
+            if(oft == 0)
+            {
+                puts("led1.\n\r");
+                GPFDAT |= (0x7<<4);   
+                GPFDAT &= ~(1<<4); 
+            }   
             break;
         }
         
   
         case 2:
         {   
-      		puts("led2_1.\n\r");
-            GPFDAT |= (0x7<<4);   
-            GPFDAT &= ~(1<<5);  
+            delay();
+            oft = INTOFFSET;
+            if(oft == 2)
+            {
+          		puts("led2.\n\r");
+                GPFDAT |= (0x7<<4);   
+                GPFDAT &= ~(1<<5); 
+            } 
             break;
         }
 
       
         case 5:
         {   
-			puts("led3_1.\n\r");
-            GPFDAT |= (0x7<<4);   
-            GPFDAT &= ~(1<<6);                  
+            delay();
+            oft = INTOFFSET;
+            if(oft == 5)
+            {
+    			puts("led3.\n\r");
+                GPFDAT |= (0x7<<4);   
+                GPFDAT &= ~(1<<6);  
+            }                
             break;
         }
 
