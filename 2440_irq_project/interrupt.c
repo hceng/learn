@@ -14,7 +14,6 @@ void IRQ_Handle()
     
     switch( oft )
     {
-
         case 0: 
         {   
             delay();
