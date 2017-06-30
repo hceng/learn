@@ -1,0 +1,1 @@
+cmd_/work/nano_pi/learn/2th_led/led_drv.ko := arm-linux-gnueabi-ld -EL -r  -T /work/nano_pi/lichee/linux-3.4/scripts/module-common.lds --build-id  -o /work/nano_pi/learn/2th_led/led_drv.ko /work/nano_pi/learn/2th_led/led_drv.o /work/nano_pi/learn/2th_led/led_drv.mod.o

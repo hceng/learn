@@ -4,14 +4,15 @@
 #include <fcntl.h>
 #include <stdio.h>
 
-/* firstdrvtest on
-  * firstdrvtest off
-  */
+/* 
+led_test on
+led_test off
+*/
 int main(int argc, char **argv)
 {
 	int fd;
 	int val = 1;
-	fd = open("/dev/xyz", O_RDWR);
+	fd = open("/dev/led", O_RDWR);
 	if (fd < 0)
 	{
 		printf("can't open!\n");
@@ -25,11 +26,14 @@ int main(int argc, char **argv)
 
 	if (strcmp(argv[1], "on") == 0)
 	{
-			printf("on\n");
+		printf("on\n");
+		val = 1;
 	}
 	else
 	{
-	    printf("no\n");
+	    printf("off\n");
+
+		val = 0;
 	}
 	
 	write(fd, &val, 4);
