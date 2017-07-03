@@ -7,4 +7,4 @@ clean:
 	make -C $(KERN_DIR) M=`pwd` modules clean
 	rm -rf modules.order
 
-obj-m	+= button_drv.o
+obj-m	+= button_irq_drv.o

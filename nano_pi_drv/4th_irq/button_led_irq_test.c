@@ -6,7 +6,7 @@
 
 /*
 PA2：led
-PA3: button
+PL11: IRQ button
 button control led
 */
 int main(int argc, char **argv)
@@ -35,20 +35,14 @@ int main(int argc, char **argv)
 	while(1)
 	{
 		read(fd_button, &key_val, 4);
+ 
 		if(key_val == 1)
 		{
-			led_val = 1;
+			led_val = !led_val;
 			write(fd_led, &led_val, 4);
-		}
-		else
-		{
-			led_val = 0;
-			write(fd_led, &led_val, 4);		
 		}
 	}
 	
-
-
 	write(fd_led, &led_val, 4);
  
 	return 0;
