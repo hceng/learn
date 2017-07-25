@@ -1,1 +1,0 @@
-d:&cd ..&cd ..&cd ..&cd ..&cd ..&cd Test&cd learn&git add -A&git commit -m "from windows push github"&git push origin master
