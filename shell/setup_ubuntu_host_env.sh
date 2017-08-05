@@ -153,11 +153,12 @@ update_software_source() {
 
 # Configure vim form github.
 vim_configure() {
-	git clone --depth=1 https://github.com/amix/vimrc.git /home/$user_name/.vim_runtime &&\
-	sh /home/$user_name/.vim_runtime/install_awesome_vimrc.sh
+	git clone --depth=1 https://github.com/amix/vimrc.git /home/$user_name/.vim_runtime 
+	chmod u+x pw /home/$user_name/.vim_runtime/install_awesome_vimrc.sh
+	bash /home/$user_name/.vim_runtime/install_awesome_vimrc.sh
 	
 	touch /home/$user_name/.vim_runtime/my_configs.vim
-	echo ":set number" > /home/$user_name/.vim_runtime
+	echo ":set number" > /home/$user_name/.vim_runtime/my_configs.vim
 	
 	#chmod -R 777 /home/$user_name/.vim_runtime 
 	chown -R $user_name /home/$user_name/.vim_runtime 
