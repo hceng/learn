@@ -159,7 +159,8 @@ vim_configure() {
 	echo ":set number" > /home/$user_name/.vim_runtime/my_configs.vim
 	
 	chown -R $user_name /home/$user_name/.vim_runtime 
-	chown    $user_name /home/$user_name/.vimrc
+	chmod u+x /home/$user_name/.vim_runtime/install_awesome_vimrc.sh
+    su - $user_name -s /home/$user_name/.vim_runtime/install_awesome_vimrc.sh
 }
 
 # Configure ftp.
@@ -294,13 +295,11 @@ check_user_name
 update_software_source
 install_software
 
-
-su $user_name
-bash /home/$user_name/.vim_runtime/install_awesome_vimrc.sh
-
 echo -e "${GREEN_COLOR}===================================================${END_COLOR}" 
 echo -e "${GREEN_COLOR}============setup ubuntu host env ok!==============${END_COLOR}" 
 echo -e "${GREEN_COLOR}===================================================${END_COLOR}"
+
+su $user_name
  
 exit 0
 
