@@ -160,7 +160,7 @@ vim_configure() {
 	
 	chown -R $user_name /home/$user_name/.vim_runtime 
 	chmod u+x /home/$user_name/.vim_runtime/install_awesome_vimrc.sh
-    su - $user_name -s /home/$user_name/.vim_runtime/install_awesome_vimrc.sh
+	su - $user_name -s /home/$user_name/.vim_runtime/install_awesome_vimrc.sh
 }
 
 # Configure ftp.
@@ -302,23 +302,3 @@ echo -e "${GREEN_COLOR}===================================================${END_
 su $user_name
  
 exit 0
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
