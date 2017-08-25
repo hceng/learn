@@ -54,7 +54,7 @@ static ssize_t first_drv_write(struct file *file, const char __user *buf, size_t
 static struct file_operations first_drv_fops = {
     .owner  =   THIS_MODULE,    /* 这是一个宏，推向编译模块时自动创建的__this_module变量 */
     .open   =   first_drv_open,     
-	.write	=	first_drv_write,	   
+	.write	=	leds_drv_write,	   
 };
 
 
