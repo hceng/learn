@@ -11,101 +11,104 @@
 #include <stdlib.h>
 
 #define FB_DEVICE_NAME "/dev/fb0"
-#define DBG_PRINTF printf
 
-static int g_fd;
+static int fd;
 
-static struct fb_var_screeninfo g_tFBVar;
-static struct fb_fix_screeninfo g_tFBFix;			
-static unsigned char *g_pucFBMem;
-static unsigned int g_dwScreenSize;
+static struct fb_var_screeninfo fb_var;
+static struct fb_fix_screeninfo fb_fix;			
+static unsigned char *fb_mem;
+static unsigned int screen_size;
 
-static unsigned int g_dwLineWidth;
-static unsigned int g_dwPixelWidth;
+static unsigned int line_width;
+static unsigned int pixel_width;
 
-static int FBDeviceInit(void)
+static int fb_device_init(void)
 {
 	int ret;
 	
-	g_fd = open(FB_DEVICE_NAME, O_RDWR);
-	if (0 > g_fd)
+	fd = open(FB_DEVICE_NAME, O_RDWR);
+	if (fd < 0)
 	{
-		DBG_PRINTF("can't open %s\n", FB_DEVICE_NAME);
+		printf("Can't open %s\n", FB_DEVICE_NAME);
+        return -1;
 	}
 
-	ret = ioctl(g_fd, FBIOGET_VSCREENINFO, &g_tFBVar);
+    //获取可变信息
+	ret = ioctl(fd, FBIOGET_VSCREENINFO, &fb_var);
 	if (ret < 0)
 	{
-		DBG_PRINTF("can't get fb's var\n");
+		printf("Can't get fb's var\n");
 		return -1;
 	}
 
-	ret = ioctl(g_fd, FBIOGET_FSCREENINFO, &g_tFBFix);
+    //获取固定信息
+	ret = ioctl(fd, FBIOGET_FSCREENINFO, &fb_fix);
 	if (ret < 0)
 	{
-		DBG_PRINTF("can't get fb's fix\n");
+		printf("Can't get fb's fix\n");
 		return -1;
 	}
 	
-	g_dwScreenSize = g_tFBVar.xres * g_tFBVar.yres * g_tFBVar.bits_per_pixel / 8;
-	g_pucFBMem = (unsigned char *)mmap(NULL , g_dwScreenSize, PROT_READ | PROT_WRITE, MAP_SHARED, g_fd, 0);
-	if (0 > g_pucFBMem)	
+    //映射fb
+	screen_size = fb_var.xres * fb_var.yres * fb_var.bits_per_pixel / 8;
+	fb_mem = (unsigned char *)mmap(NULL , screen_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (fb_mem < 0)	
 	{
-		DBG_PRINTF("can't mmap\n");
+		printf("Can't mmap\n");
 		return -1;
 	}
 
-	g_dwLineWidth  = g_tFBVar.xres * g_tFBVar.bits_per_pixel / 8;
-	g_dwPixelWidth = g_tFBVar.bits_per_pixel / 8;
+	line_width  = fb_var.xres * fb_var.bits_per_pixel / 8;
+	pixel_width = fb_var.bits_per_pixel / 8;
 	
 	return 0;
 }
 
-
-static int FBShowPixel(int iX, int iY, unsigned int dwColor)
+//color:0x00RRGGBB
+static int fb_show_pixel(int x, int y, unsigned int color)
 {
-	unsigned char *pucFB;
-	unsigned short *pwFB16bpp;
-	unsigned int *pdwFB32bpp;
-	unsigned short wColor16bpp; /* 565 */
-	int iRed;
-	int iGreen;
-	int iBlue;
+	unsigned char *fb_show;
+	unsigned short *fb_show_16bpp;
+	unsigned int *fb_show_32bpp;
+	unsigned short fb_show_16bpp_new; /* 565 */
+	int red;
+	int green;
+	int blue;
 
-	if ((iX >= g_tFBVar.xres) || (iY >= g_tFBVar.yres))
+	if ((x >= fb_var.xres) || (y >= fb_var.yres))
 	{
-		DBG_PRINTF("out of region\n");
+		printf("Out of region\n");
 		return -1;
 	}
 
-	pucFB      = g_pucFBMem + g_dwLineWidth * iY + g_dwPixelWidth * iX;
-	pwFB16bpp  = (unsigned short *)pucFB;
-	pdwFB32bpp = (unsigned int *)pucFB;
+	fb_show        = fb_mem + line_width * y + pixel_width * x;
+	fb_show_16bpp  = (unsigned short *)fb_show;
+	fb_show_32bpp  = (unsigned int *)fb_show;
 	
-	switch (g_tFBVar.bits_per_pixel)
+	switch (fb_var.bits_per_pixel)
 	{
 		case 8:
 		{
-			*pucFB = (unsigned char)dwColor;
+			*fb_show = (unsigned char)color;
 			break;
 		}
 		case 16:
 		{
-			iRed   = (dwColor >> (16+3)) & 0x1f;
-			iGreen = (dwColor >> (8+2)) & 0x3f;
-			iBlue  = (dwColor >> 3) & 0x1f;
-			wColor16bpp = (iRed << 11) | (iGreen << 5) | iBlue;
-			*pwFB16bpp	= wColor16bpp;
+			red   = (color >> (16+3)) & 0x1F;
+			green = (color >> (8+2)) & 0x3F;
+			blue  = (color >> 3) & 0x1F;
+			fb_show_16bpp_new = (red << 11) | (green << 5) | blue;
+			*fb_show_16bpp	= fb_show_16bpp_new;
 			break;
 		}
 		case 32:
 		{
-			*pdwFB32bpp = dwColor;
+			*fb_show_32bpp = color;
 			break;
 		}
 		default :
 		{
-			DBG_PRINTF("can't support %d bpp\n", g_tFBVar.bits_per_pixel);
+			printf("Can't support %d bpp\n", fb_var.bits_per_pixel);
 			return -1;
 		}
 	}
@@ -113,55 +116,55 @@ static int FBShowPixel(int iX, int iY, unsigned int dwColor)
 	return 0;
 }
 
-static int FBCleanScreen(unsigned int dwBackColor)
+static int fb_clean_screen(unsigned int back_color)
 {
-	unsigned char *pucFB;
-	unsigned short *pwFB16bpp;
-	unsigned int *pdwFB32bpp;
-	unsigned short wColor16bpp; /* 565 */
-	int iRed;
-	int iGreen;
-	int iBlue;
+	unsigned char *fb_show;
+	unsigned short *fb_show_16bpp;
+	unsigned int *fb_show_32bpp;
+	unsigned short fb_show_16bpp_new; /* 565 */
+	int red;
+	int green;
+	int blue;
 	int i = 0;
 
-	pucFB      = g_pucFBMem;
-	pwFB16bpp  = (unsigned short *)pucFB;
-	pdwFB32bpp = (unsigned int *)pucFB;
+	fb_show       = fb_mem;
+	fb_show_16bpp = (unsigned short *)fb_show;
+	fb_show_32bpp = (unsigned int *)fb_show;
 
-	switch (g_tFBVar.bits_per_pixel)
+	switch (fb_var.bits_per_pixel)
 	{
 		case 8:
 		{
-			memset(g_pucFBMem, dwBackColor, g_dwScreenSize);
+			memset(fb_mem, back_color, screen_size);
 			break;
 		}
 		case 16:
 		{
-			iRed   = (dwBackColor >> (16+3)) & 0x1f;
-			iGreen = (dwBackColor >> (8+2)) & 0x3f;
-			iBlue  = (dwBackColor >> 3) & 0x1f;
-			wColor16bpp = (iRed << 11) | (iGreen << 5) | iBlue;
-			while (i < g_dwScreenSize)
+			red   = (back_color >> (16+3)) & 0x1F;
+			green = (back_color >> (8+2)) & 0x3F;
+			blue  = (back_color >> 3) & 0x1F;
+			fb_show_16bpp_new = (red << 11) | (green << 5) | blue;
+			while (i < screen_size)
 			{
-				*pwFB16bpp	= wColor16bpp;
-				pwFB16bpp++;
+				*fb_show_16bpp	= fb_show_16bpp_new;
+				fb_show_16bpp++;
 				i += 2;
 			}
 			break;
 		}
 		case 32:
 		{
-			while (i < g_dwScreenSize)
+			while (i < screen_size)
 			{
-				*pdwFB32bpp	= dwBackColor;
-				pdwFB32bpp++;
+				*fb_show_32bpp	= back_color;
+				fb_show_32bpp++;
 				i += 4;
 			}
 			break;
 		}
 		default :
 		{
-			DBG_PRINTF("can't support %d bpp\n", g_tFBVar.bits_per_pixel);
+			printf("can't support %d bpp\n", fb_var.bits_per_pixel);
 			return -1;
 		}
 	}
@@ -169,47 +172,36 @@ static int FBCleanScreen(unsigned int dwBackColor)
 	return 0;
 }
 
-static int FBShowLine(int iXStart, int iXEnd, int iY, unsigned char *pucRGBArray)
+static int fb_show_line(int x_start, int x_end, int y, unsigned char *color_array)
 {
-	int i = iXStart * 3;
-	int iX;
+	int i = x_start * 3;
+	int x;
 	unsigned int dwColor;
 
-	if (iY >= g_tFBVar.yres)
+	if (y >= fb_var.yres)
 		return -1;
 
-	if (iXStart >= g_tFBVar.xres)
+	if (x_start >= fb_var.xres)
 		return -1;
 
-	if (iXEnd >= g_tFBVar.xres)
+	if (x_end >= fb_var.xres)
 	{
-		iXEnd = g_tFBVar.xres;		
+		x_end = fb_var.xres;		
 	}
 	
-	for (iX = iXStart; iX < iXEnd; iX++)
+	for (x = x_start; x < x_end; x++)
 	{
 		/* 0xRRGGBB */
-		dwColor = (pucRGBArray[i]<<16) + (pucRGBArray[i+1]<<8) + (pucRGBArray[i+2]<<0);
+		dwColor = (color_array[i]<<16) + (color_array[i+1]<<8) + (color_array[i+2]<<0);
 		i += 3;
-		FBShowPixel(iX, iY, dwColor);
+		fb_show_pxel(x, y, dwColor);
 	}
 	return 0;
 }
 
 
-/*
-Allocate and initialize a JPEG decompression object    // 分配和初始化一个decompression结构体
-Specify the source of the compressed data (eg, a file) // 指定源文件
-Call jpeg_read_header() to obtain image info		   // 用jpeg_read_header获得jpg信息
-Set parameters for decompression					   // 设置解压参数,比如放大、缩小
-jpeg_start_decompress(...); 						   // 启动解压：jpeg_start_decompress
-while (scan lines remain to be read)
-	jpeg_read_scanlines(...);						   // 循环调用jpeg_read_scanlines
-jpeg_finish_decompress(...);						   // jpeg_finish_decompress
-Release the JPEG decompression object				   // 释放decompression结构体
-*/
-
-/* Uage: jpg2rgb <jpg_file>
+/* 
+ * Uage: jpg2rgb <jpg_file>
  */
 
 int main(int argc, char **argv)
@@ -227,12 +219,12 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	if (FBDeviceInit())
+	if (fb_device_init())
 	{
 		return -1;
 	}
 
-	FBCleanScreen(0);
+	fb_clean_screen(0);
 
 	// 分配和初始化一个decompression结构体
 	cinfo.err = jpeg_std_error(&jerr);
@@ -275,7 +267,7 @@ int main(int argc, char **argv)
 		(void) jpeg_read_scanlines(&cinfo, &buffer, 1);
 
 		// 写到LCD去
-		FBShowLine(0, cinfo.output_width, cinfo.output_scanline, buffer);
+		fb_show_line(0, cinfo.output_width, cinfo.output_scanline, buffer);
 	}
 	
 	free(buffer);

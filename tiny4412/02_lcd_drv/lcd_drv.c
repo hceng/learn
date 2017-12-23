@@ -195,43 +195,49 @@ static int lcd_probe(struct platform_device *pdev)
         return -EINVAL;
     }
     //时钟源选择\使能时钟
+    //Selects clock source for LCD_BLK
     //FIMD0_SEL:bit[3:0]=0110=SCLKMPLL_USER_T=800M
     temp = readl(clk_regs_base + CLK_SRC_LCD0);
     temp &= ~(0x0F<<0);
     temp |= (0x3<<1);
     writel(temp, clk_regs_base + CLK_SRC_LCD0);
-    
-    //FIMD0_MASK:Mask output clock of MUXFIMD0
+
+    //Clock source mask for LCD_BLK    
+    //FIMD0_MASK:Mask output clock of MUXFIMD0 (1=Unmask)
     temp = readl(clk_regs_base + CLK_SRC_MASK_LCD);
     temp |= (0x01<<0);
     writel(temp, clk_regs_base + CLK_SRC_MASK_LCD);
-    
-    //SCLK_FIMD0 = MOUTFIMD0/(FIMD0_RATIO + 1),分频 1/1
+
+    //Clock source mask for LCD_BLK    
+    //SCLK_FIMD0 = MOUTFIMD0/(FIMD0_RATIO + 1),分频比 1/1
     temp = readl(clk_regs_base + CLK_DIV_LCD);
     temp &= ~(0x0F<<0);
     writel(temp, clk_regs_base + CLK_DIV_LCD);
-    
-    //CLK_FIMD0:CLK_FIMD0 Pass
+
+    //Controls IP clock gating for LCD_BLK   
+    //CLK_FIMD0:Gating all clocks for FIMD0 (1=Pass)
     temp = readl(clk_regs_base + CLK_GATE_IP_LCD);
     temp |= (0x01<<0);
     writel(temp, clk_regs_base + CLK_GATE_IP_LCD);
     
-    //FIMDBYPASS_LBLK0:FIMD of LBLK0 Bypass Selection  FIMD Bypass
+    //FIMDBYPASS_LBLK0:FIMD of LBLK0 Bypass Selection (1=FIMD Bypass)
     temp = readl(lcdblk_regs_base + LCDBLK_CFG);
     temp |= (0x01<<1);
     writel(temp, lcdblk_regs_base + LCDBLK_CFG);
 
-    //MIE0_DISPON:MIE0_DISPON: PWM output control  PWM outpupt enable
+    //MIE0_DISPON:MIE0_DISPON: PWM output control (1=PWM outpupt enable)
     temp = readl(lcdblk_regs_base + LCDBLK_CFG2);
     temp |= (0x01<<0);
     writel(temp, lcdblk_regs_base + LCDBLK_CFG2);
-    mdelay(1000);
-    //分频    VCLK = FIMD*SCLK/(CLKVAL+1), where CLKVAL>=1
-    //800/(23 +1 ) == 33.3M
-    temp = readl(lcd_regs_base + VIDCON0);
-    temp |= (23 << 6);
-    writel(temp, lcd_regs_base + VIDCON0);
     
+    mdelay(1000);
+    
+    //LCD时钟:  VCLK=FIMD*SCLK/(CLKVAL+1), where CLKVAL>=1
+    //800/(19+1) == 40M<80M
+    temp = readl(lcd_regs_base + VIDCON0);
+    temp |= (19<<6);
+    writel(temp, lcd_regs_base + VIDCON0);
+
     /*
      * VIDTCON1:
      * [5]:IVSYNC  ===> 1 : Inverted(反转)
