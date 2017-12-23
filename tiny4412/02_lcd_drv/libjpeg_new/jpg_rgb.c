@@ -194,7 +194,7 @@ static int fb_show_line(int x_start, int x_end, int y, unsigned char *color_arra
 		/* 0xRRGGBB */
 		dwColor = (color_array[i]<<16) + (color_array[i+1]<<8) + (color_array[i+2]<<0);
 		i += 3;
-		fb_show_pxel(x, y, dwColor);
+		fb_show_pixel(x, y, dwColor);
 	}
 	return 0;
 }
