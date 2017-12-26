@@ -25,15 +25,15 @@ static unsigned int pixel_width;
 static int fb_device_init(void)
 {
 	int ret;
-	
+
 	fd = open(FB_DEVICE_NAME, O_RDWR);
 	if (fd < 0)
 	{
 		printf("Can't open %s\n", FB_DEVICE_NAME);
-        return -1;
+		return -1;
 	}
 
-    //获取可变信息
+	//获取可变信息
 	ret = ioctl(fd, FBIOGET_VSCREENINFO, &fb_var);
 	if (ret < 0)
 	{
@@ -41,15 +41,15 @@ static int fb_device_init(void)
 		return -1;
 	}
 
-    //获取固定信息
+	//获取固定信息
 	ret = ioctl(fd, FBIOGET_FSCREENINFO, &fb_fix);
 	if (ret < 0)
 	{
 		printf("Can't get fb's fix\n");
 		return -1;
 	}
-	
-    //映射fb
+
+	//映射fb
 	screen_size = fb_var.xres * fb_var.yres * fb_var.bits_per_pixel / 8;
 	fb_mem = (unsigned char *)mmap(NULL , screen_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (fb_mem < 0)	
@@ -60,7 +60,7 @@ static int fb_device_init(void)
 
 	line_width  = fb_var.xres * fb_var.bits_per_pixel / 8;
 	pixel_width = fb_var.bits_per_pixel / 8;
-	
+
 	return 0;
 }
 
@@ -84,33 +84,33 @@ static int fb_show_pixel(int x, int y, unsigned int color)
 	fb_show        = fb_mem + line_width * y + pixel_width * x;//定位
 	fb_show_16bpp  = (unsigned short *)fb_show;
 	fb_show_32bpp  = (unsigned int *)fb_show;
-	
+
 	switch (fb_var.bits_per_pixel)
 	{
 		case 8:
-		{
-			*fb_show = (unsigned char)color;
-			break;
-		}
+			{
+				*fb_show = (unsigned char)color;
+				break;
+			}
 		case 16:
-		{
-			red   = (color >> (16+3)) & 0x1F;
-			green = (color >> (8+2)) & 0x3F;
-			blue  = (color >> 3) & 0x1F;
-			fb_show_16bpp_new = (red << 11) | (green << 5) | blue;
-			*fb_show_16bpp	= fb_show_16bpp_new;
-			break;
-		}
+			{
+				red   = (color >> (16+3)) & 0x1F;
+				green = (color >> (8+2)) & 0x3F;
+				blue  = (color >> 3) & 0x1F;
+				fb_show_16bpp_new = (red << 11) | (green << 5) | blue;
+				*fb_show_16bpp	= fb_show_16bpp_new;
+				break;
+			}
 		case 32:
-		{
-			*fb_show_32bpp = color;
-			break;
-		}
+			{
+				*fb_show_32bpp = color;
+				break;
+			}
 		default :
-		{
-			printf("Can't support %d bpp\n", fb_var.bits_per_pixel);
-			return -1;
-		}
+			{
+				printf("Can't support %d bpp\n", fb_var.bits_per_pixel);
+				return -1;
+			}
 	}
 
 	return 0;
@@ -134,39 +134,39 @@ static int fb_clean_screen(unsigned int back_color)
 	switch (fb_var.bits_per_pixel)
 	{
 		case 8:
-		{
-			memset(fb_mem, back_color, screen_size);
-			break;
-		}
+			{
+				memset(fb_mem, back_color, screen_size);
+				break;
+			}
 		case 16:
-		{
-			red   = (back_color >> (16+3)) & 0x1F;
-			green = (back_color >> (8+2)) & 0x3F;
-			blue  = (back_color >> 3) & 0x1F;
-			fb_show_16bpp_new = (red << 11) | (green << 5) | blue;
-			while (i < screen_size)
 			{
-				*fb_show_16bpp	= fb_show_16bpp_new;
-				fb_show_16bpp++;
-				i += 2;
+				red   = (back_color >> (16+3)) & 0x1F;
+				green = (back_color >> (8+2)) & 0x3F;
+				blue  = (back_color >> 3) & 0x1F;
+				fb_show_16bpp_new = (red << 11) | (green << 5) | blue;
+				while (i < screen_size)
+				{
+					*fb_show_16bpp	= fb_show_16bpp_new;
+					fb_show_16bpp++;
+					i += 2;
+				}
+				break;
 			}
-			break;
-		}
 		case 32:
-		{
-			while (i < screen_size)
 			{
-				*fb_show_32bpp	= back_color;
-				fb_show_32bpp++;
-				i += 4;
+				while (i < screen_size)
+				{
+					*fb_show_32bpp	= back_color;
+					fb_show_32bpp++;
+					i += 4;
+				}
+				break;
 			}
-			break;
-		}
 		default :
-		{
-			printf("Can't support %d bpp\n", fb_var.bits_per_pixel);
-			return -1;
-		}
+			{
+				printf("Can't support %d bpp\n", fb_var.bits_per_pixel);
+				return -1;
+			}
 	}
 
 	return 0;
@@ -188,7 +188,7 @@ static int fb_show_line(int x_start, int x_end, int y, unsigned char *color_arra
 	{
 		x_end = fb_var.xres;		
 	}
-	
+
 	for (x = x_start; x < x_end; x++)
 	{
 		/* 0xRRGGBB */
@@ -206,7 +206,7 @@ static int fb_show_line(int x_start, int x_end, int y, unsigned char *color_arra
 
 int main(int argc, char **argv)
 {
-    //1、分配jpeg对象结构体空间、并初始化
+	//1、分配jpeg对象结构体空间、并初始化
 	struct jpeg_decompress_struct cinfo;
 	struct jpeg_error_mgr jerr;
 	FILE * infile;
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
 
 	//绑定jerr错误结构体至jpeg对象结构体
 	cinfo.err = jpeg_std_error(&jerr);
-    //初始化cinfo结构体
+	//初始化cinfo结构体
 	jpeg_create_decompress(&cinfo);
 
 	//2、指定解压数据源
@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 	printf("output_height = %d\n", cinfo.output_height);
 	printf("output_components = %d\n", cinfo.output_components);
 
-    //6、取数据并显示
+	//6、取数据并显示
 	//一行的数据长度
 	row_stride = cinfo.output_width * cinfo.output_components;
 	buffer = malloc(row_stride);
@@ -272,11 +272,11 @@ int main(int argc, char **argv)
 		// 写到LCD去
 		fb_show_line(0, cinfo.output_width, cinfo.output_scanline, buffer);
 	}
-		
-    //7、解压完毕
+
+	//7、解压完毕
 	jpeg_finish_decompress(&cinfo);
-    //8、释放资源和退出程序
-    free(buffer);
+	//8、释放资源和退出程序
+	free(buffer);
 	jpeg_destroy_decompress(&cinfo);
 
 	return 0;
