@@ -81,7 +81,7 @@ static int fb_show_pixel(int x, int y, unsigned int color)
 		return -1;
 	}
 
-	fb_show        = fb_mem + line_width * y + pixel_width * x;
+	fb_show        = fb_mem + line_width * y + pixel_width * x;//定位
 	fb_show_16bpp  = (unsigned short *)fb_show;
 	fb_show_32bpp  = (unsigned int *)fb_show;
 	
@@ -164,7 +164,7 @@ static int fb_clean_screen(unsigned int back_color)
 		}
 		default :
 		{
-			printf("can't support %d bpp\n", fb_var.bits_per_pixel);
+			printf("Can't support %d bpp\n", fb_var.bits_per_pixel);
 			return -1;
 		}
 	}
@@ -176,7 +176,7 @@ static int fb_show_line(int x_start, int x_end, int y, unsigned char *color_arra
 {
 	int i = x_start * 3;
 	int x;
-	unsigned int dwColor;
+	unsigned int color;
 
 	if (y >= fb_var.yres)
 		return -1;
@@ -192,20 +192,21 @@ static int fb_show_line(int x_start, int x_end, int y, unsigned char *color_arra
 	for (x = x_start; x < x_end; x++)
 	{
 		/* 0xRRGGBB */
-		dwColor = (color_array[i]<<16) + (color_array[i+1]<<8) + (color_array[i+2]<<0);
+		color = (color_array[i]<<16) + (color_array[i+1]<<8) + (color_array[i+2]<<0);
 		i += 3;
-		fb_show_pixel(x, y, dwColor);
+		fb_show_pixel(x, y, color);
 	}
 	return 0;
 }
 
 
 /* 
- * Uage: jpg2rgb <jpg_file>
+ * Uage: jpg_rgb <jpg_file>
  */
 
 int main(int argc, char **argv)
 {
+    //1、分配jpeg对象结构体空间、并初始化
 	struct jpeg_decompress_struct cinfo;
 	struct jpeg_error_mgr jerr;
 	FILE * infile;
@@ -226,30 +227,31 @@ int main(int argc, char **argv)
 
 	fb_clean_screen(0);
 
-	// 分配和初始化一个decompression结构体
+	//绑定jerr错误结构体至jpeg对象结构体
 	cinfo.err = jpeg_std_error(&jerr);
+    //初始化cinfo结构体
 	jpeg_create_decompress(&cinfo);
 
-	// 指定源文件
+	//2、指定解压数据源
 	if ((infile = fopen(argv[1], "rb")) == NULL) {
 		fprintf(stderr, "can't open %s\n", argv[1]);
 		return -1;
 	}
 	jpeg_stdio_src(&cinfo, infile);
 
-	// 用jpeg_read_header获得jpg信息
+	//3、获取解压文件信息
 	jpeg_read_header(&cinfo, TRUE);
 	/* 源信息 */
 	printf("image_width = %d\n", cinfo.image_width);
 	printf("image_height = %d\n", cinfo.image_height);
 	printf("num_components = %d\n", cinfo.num_components);
 
-	// 设置解压参数,比如放大、缩小
+	//4、为解压设定参数，包括图像大小和颜色空间
 	printf("enter scale M/N:\n");
 	scanf("%d/%d", &cinfo.scale_num, &cinfo.scale_denom);
 	printf("scale to : %d/%d\n", cinfo.scale_num, cinfo.scale_denom);
 
-	// 启动解压：jpeg_start_decompress	
+	//5、开始解压缩	
 	jpeg_start_decompress(&cinfo);
 
 	/* 输出的图象的信息 */
@@ -257,7 +259,8 @@ int main(int argc, char **argv)
 	printf("output_height = %d\n", cinfo.output_height);
 	printf("output_components = %d\n", cinfo.output_components);
 
-	// 一行的数据长度
+    //6、取数据并显示
+	//一行的数据长度
 	row_stride = cinfo.output_width * cinfo.output_components;
 	buffer = malloc(row_stride);
 
@@ -269,9 +272,11 @@ int main(int argc, char **argv)
 		// 写到LCD去
 		fb_show_line(0, cinfo.output_width, cinfo.output_scanline, buffer);
 	}
-	
-	free(buffer);
+		
+    //7、解压完毕
 	jpeg_finish_decompress(&cinfo);
+    //8、释放资源和退出程序
+    free(buffer);
 	jpeg_destroy_decompress(&cinfo);
 
 	return 0;
