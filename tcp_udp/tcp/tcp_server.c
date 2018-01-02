@@ -25,7 +25,7 @@
 
 int main(int argc, char **argv)
 {
-    int server_fd, new_fd;
+    int sock_fd, new_fd;
 	struct sockaddr_in server_addr;
 	struct sockaddr_in client_addr;
     int ret;
@@ -35,34 +35,34 @@ int main(int argc, char **argv)
     int client_num = -1;
     
     /* socket */
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);//AF_INET:IPV4;SOCK_STREAM:TCP
-    if (-1 == server_fd)
+    sock_fd = socket(AF_INET, SOCK_STREAM, 0);//AF_INET:IPV4;SOCK_STREAM:TCP
+    if (-1 == sock_fd)
     {
         fprintf(stderr,"socket error:%s\n\a", strerror(errno));
         exit(1);
     }
     
-    /* set server sockaddr_in */
+    /* set sockaddr_in parameter*/
     memset(&server_addr, 0, sizeof(struct sockaddr_in));//clear
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);//INADDR_ANY:This machine all IP
     server_addr.sin_port = htons(PORT_NUMBER);
 
     /* bind */
-    ret = bind(server_fd, (struct sockaddr *)(&server_addr), sizeof(struct sockaddr));
+    ret = bind(sock_fd, (struct sockaddr *)(&server_addr), sizeof(struct sockaddr));
     if(-1 == ret)
     {
         fprintf(stderr,"bind error:%s\n\a", strerror(errno));
-        close(server_fd);
+        close(sock_fd);
         exit(1);
     }
     
     /* listen */
-    ret = listen(server_fd, BACKLOG);
+    ret = listen(sock_fd, BACKLOG);
     if (-1 == ret)
     {
         fprintf(stderr,"listen error:%s\n\a", strerror(errno));
-        close(server_fd);
+        close(sock_fd);
         exit(1);
     }
     
@@ -70,11 +70,11 @@ int main(int argc, char **argv)
     while(1)
     {
         addr_len = sizeof(struct sockaddr);
-        new_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
+        new_fd = accept(sock_fd, (struct sockaddr *)&client_addr, &addr_len);
         if (-1 == new_fd)
         {
             fprintf(stderr,"accept error:%s\n\a", strerror(errno));
-            close(server_fd);
+            close(sock_fd);
             exit(1);
         }
         
@@ -105,6 +105,6 @@ int main(int argc, char **argv)
     }
     
     /* close */
-    close(server_fd);
+    close(sock_fd);
 	exit(0); 
 }
