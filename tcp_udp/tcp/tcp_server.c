@@ -34,6 +34,8 @@ int main(int argc, char **argv)
 	unsigned char recv_buf[1000];
     int client_num = -1;
     
+    signal(SIGCHLD,SIG_IGN);
+    
     /* socket */
     sock_fd = socket(AF_INET, SOCK_STREAM, 0);//AF_INET:IPV4;SOCK_STREAM:TCP
     if (-1 == sock_fd)
