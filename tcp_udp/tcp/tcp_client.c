@@ -24,7 +24,6 @@ int main(int argc, char *argv[])
 {
     int sock_fd;
     struct sockaddr_in server_addr;
-    struct hostent *host;
     int ret;
     unsigned char send_buf[1000];
     int send_len;
@@ -32,12 +31,6 @@ int main(int argc, char *argv[])
     if(argc != 2)
     {
         fprintf(stderr, "Usage:%s hostname\n\a", argv[0]);
-        exit(1);
-    }
-
-    if((host = gethostbyname(argv[1])) == NULL)
-    {
-        fprintf(stderr,"gethostbyname error.\n");
         exit(1);
     }
     
