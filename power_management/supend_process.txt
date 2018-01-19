@@ -22,7 +22,7 @@ state_store (kernel/power/main.c)
                     dpm_suspend (drivers/base/power/main.c) //让各类设备休眠
                         dpm_prepared_list --> device_suspend //对于dpm_prepared_list链表中的每一个设备,都调用device_suspend
                             __device_suspend
-                                dev->pm_domain->ops->suspend	或
+                                dev->pm_domain->ops->suspend    或
                                 dev->type->pm->suspend          或
                                 dev->class->pm->suspend         或
                                 dev->bus->pm->suspend           或
@@ -32,30 +32,30 @@ state_store (kernel/power/main.c)
                         suspend_ops->prepare //即xxx_pm_prepare
                     dpm_suspend_late (drivers/base/power/main.c) 
                         dpm_suspended_list --> device_suspend_late //对于dpm_suspended_list链表中的每一个设备,都调用device_suspend_late
-                            __device_suspend_late								
+                            __device_suspend_late                                
                                     dev->pm_domain->ops->suspend_late  或
-									dev->type->pm->suspend_late        或
-									dev->class->pm->suspend_late       或
-									dev->bus->pm->suspend_late         或
-									dev->driver->pm->suspend_late                           
+                                    dev->type->pm->suspend_late        或
+                                    dev->class->pm->suspend_late       或
+                                    dev->bus->pm->suspend_late         或
+                                    dev->driver->pm->suspend_late                           
                     platform_suspend_prepare_late (drivers/base/power/main.c)                 
-						freeze_ops->prepare   
+                        freeze_ops->prepare   
                     dpm_suspend_noirq (drivers/base/power/main.c) 
                         dpm_late_early_list --> device_suspend_noirq //对于dpm_late_early_list链表中的每一个设备,都调用device_suspend_noirq
                             __device_suspend_noirq
                                     dev->pm_domain->ops->suspend_noirq   或
-									dev->type->pm->suspend_noirq         或
-									dev->class->pm->suspend_noirq        或
-									dev->bus->pm->suspend_noirq          或
-									dev->driver->pm->suspend_noirq		
+                                    dev->type->pm->suspend_noirq         或
+                                    dev->class->pm->suspend_noirq        或
+                                    dev->bus->pm->suspend_noirq          或
+                                    dev->driver->pm->suspend_noirq        
                     platform_suspend_prepare_noirq (kernel/power/suspend.c)
                         suspend_ops->prepare_late 
-					disable_nonboot_cpus      //关CPU  	
-					arch_suspend_disable_irqs //关中断
-					syscore_suspend           //关闭核心模块
-					suspend_ops->enter        //xxx_pm_enter (arch\arm\plat-xxxx\pm.c)								                   
-						......
-唤醒过程：	            唤醒源按键按下，启动Uboot                           
+                    disable_nonboot_cpus      //关CPU      
+                    arch_suspend_disable_irqs //关中断
+                    syscore_suspend           //关闭核心模块
+                    suspend_ops->enter        //xxx_pm_enter (arch\arm\plat-xxxx\pm.c)                                                   
+                        ......
+唤醒过程：               唤醒源按键按下，启动Uboot                           
                         ......
                     syscore_resume            //开启核心模块                          
                     arch_suspend_enable_irqs  //开中断
@@ -80,7 +80,7 @@ state_store (kernel/power/main.c)
                         suspend_ops->finish
                 dpm_resume_end  
                 resume_console //恢复控制台       
-			suspend_finish	
+            suspend_finish    
                 suspend_thaw_processes //唤醒应用程序
                 pm_notifier_call_chain //通知各类应用程序
                 pm_restore_console     //复原控制台
