@@ -1,0 +1,87 @@
+/*linux-4.13.9*/
+休眠过程：
+state_store (kernel/power/main.c)
+    pm_suspend (kernel/power/suspend.c)
+        enter_state (kernel/power/suspend.c)
+            suspend_prepare (kernel/power/suspend.c)
+                pm_prepare_console (kernel/power/console.c)
+                pm_notifier_call_chain(PM_SUSPEND_PREPARE); (kernel/power/main.c) //通知所有关心"休眠消息"的驱动程序
+                suspend_freeze_processes (kernel/power/power.h) //冻结APP和内核线程 
+            suspend_devices_and_enter (kernel/power/suspend.c) //让设备进入休眠状态
+                platform_suspend_begin (kernel/power/suspend.c)
+                    freeze_ops->begin或suspend_ops->begin (kernel/power/suspend.c) //如果平台相关的代码有begin函数就去调用它
+                suspend_console (kernel/power/suspend.c)
+                dpm_suspend_start (drivers/base/power/main.c)
+                    dpm_prepare (drivers/base/power/main.c)
+                        dpm_list --> device_prepare //对于dmp_list链表中的每一个设备,都调用device_prepare
+                            dev->pm_domain->ops->prepare  或
+                            dev->type->pm->prepare        或
+                            dev->class->pm->prepare       或
+                            dev->bus->pm->prepare         或
+                            dev->driver->pm->prepare
+                    dpm_suspend (drivers/base/power/main.c) //让各类设备休眠
+                        dpm_prepared_list --> device_suspend //对于dpm_prepared_list链表中的每一个设备,都调用device_suspend
+                            __device_suspend
+                                dev->pm_domain->ops->suspend	或
+                                dev->type->pm->suspend          或
+                                dev->class->pm->suspend         或
+                                dev->bus->pm->suspend           或
+                                dev->driver->pm->suspend
+                suspend_enter (kernel/power/suspend.c)
+                    platform_suspend_prepare (kernel/power/suspend.c)
+                        suspend_ops->prepare //即xxx_pm_prepare
+                    dpm_suspend_late (drivers/base/power/main.c) 
+                        dpm_suspended_list --> device_suspend_late //对于dpm_suspended_list链表中的每一个设备,都调用device_suspend_late
+                            __device_suspend_late								
+                                    dev->pm_domain->ops->suspend_late  或
+									dev->type->pm->suspend_late        或
+									dev->class->pm->suspend_late       或
+									dev->bus->pm->suspend_late         或
+									dev->driver->pm->suspend_late                           
+                    platform_suspend_prepare_late (drivers/base/power/main.c)                 
+						freeze_ops->prepare   
+                    dpm_suspend_noirq (drivers/base/power/main.c) 
+                        dpm_late_early_list --> device_suspend_noirq //对于dpm_late_early_list链表中的每一个设备,都调用device_suspend_noirq
+                            __device_suspend_noirq
+                                    dev->pm_domain->ops->suspend_noirq   或
+									dev->type->pm->suspend_noirq         或
+									dev->class->pm->suspend_noirq        或
+									dev->bus->pm->suspend_noirq          或
+									dev->driver->pm->suspend_noirq		
+                    platform_suspend_prepare_noirq (kernel/power/suspend.c)
+                        suspend_ops->prepare_late 
+					disable_nonboot_cpus      //关CPU  	
+					arch_suspend_disable_irqs //关中断
+					syscore_suspend           //关闭核心模块
+					suspend_ops->enter        //xxx_pm_enter (arch\arm\plat-xxxx\pm.c)								                   
+						......
+唤醒过程：	            唤醒源按键按下，启动Uboot                           
+                        ......
+                    syscore_resume            //开启核心模块                          
+                    arch_suspend_enable_irqs  //开中断
+                    enable_nonboot_cpus       //启动CPU
+                    platform_resume_noirq     
+                        suspend_ops->wake
+                    dpm_resume_noirq
+                        dpm_noirq_list --> device_resume_noirq //对于dpm_noirq_list链表中的每一个设备,都调用device_resume_noirq
+                            dev->type->pm->resume_noirq        或
+                            dev->class->pm->resume_noirq       或
+                            dev->bus->pm->resume_noirq         或
+                            dev->driver->pm->resume_noirq
+                    platform_resume_early
+                        freeze_ops->restore
+                    dpm_resume_early
+                        dpm_late_early_list --> device_resume_early //对于dpm_late_early_list链表中的每一个设备,device_resume_early
+                            dev->type->pm->resume_early        或
+                            dev->class->pm->resume_early       或
+                            dev->bus->pm->resume_early         或
+                            dev->driver->pm->resume_early
+                    platform_resume_finish
+                        suspend_ops->finish
+                dpm_resume_end  
+                resume_console //恢复控制台       
+			suspend_finish	
+                suspend_thaw_processes //唤醒应用程序
+                pm_notifier_call_chain //通知各类应用程序
+                pm_restore_console     //复原控制台
+//返回用户空间   
