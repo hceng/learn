@@ -1,0 +1,44 @@
+/*linux-4.13.9*/
+增加计数：
+pm_runtime_get_sync (include\linux\pm_runtime.h)
+    __pm_runtime_resume (drivers\base\power\runtime.c)
+        atomic_inc //增加使用计数usage_count
+        rpm_resume //resume设备
+            if (dev->power.disable_depth > 0) retval = -EACCES; //要先pm_runtime_enable,使disable_depth初始值1变为0
+            if (!dev->power.timer_autosuspends) pm_runtime_deactivate_timer(dev); //为防止设备频繁地开关,可以设置timer_autosuspends
+            if (dev->power.runtime_status == RPM_ACTIVE) retval = 1; //如果设备已经是RPM_ACTIVE,没必要再次resume,直接返回
+            if (dev->power.runtime_status == RPM_RESUMING || 
+                dev->power.runtime_status == RPM_SUSPENDING) DEFINE_WAIT(wait); //如果处于RPM_RESUMING/RPM_SUSPENDING,等待该操作完成,再从头判断
+            if (!parent && dev->parent) //如果有父设备,需要增加父设备计数和在必要时唤醒父设备
+            callback = RPM_GET_CALLBACKdev, runtime_resume); //__rpm_get_callback
+                ops = &dev->pm_domain->ops;  或
+                ops = dev->type->pm;         或
+                ops = dev->class->pm;        或
+                ops = dev->bus->pm;          或                                
+                cb = dev->driver->pm; 
+            retval = rpm_callback(callback, dev); //retval<1 成功; retval>=0 失败
+            if (parent) atomic_inc(&parent->power.child_count); //如果resume成功且有父设备,给父设备的child_count加1
+            wake_up_all //唤醒其它进程
+            if (retval >= 0) rpm_idle(dev, RPM_ASYNC); //如果resume失败,让设备进入idle状态
+            
+减少计数：
+pm_runtime_put_sync (include\linux\pm_runtime.h)
+    __pm_runtime_idle (drivers\base\power\runtime.c)
+        atomic_dec_and_test //减少使用计数usage_count
+        rpm_idle //让设备进入idle状态
+            rpm_check_suspend_allowed //检查是否允许设备进入suspend状态
+                if (dev->power.disable_depth > 0) retval = -EACCES; //要先pm_runtime_enable,使disable_depth初始值1变为0            
+                if (atomic_read(&dev->power.usage_count) > 0) retval = -EAGAIN; //当前的使用计数大于0,失败 
+                if (!dev->power.ignore_children && 
+                atomic_read(&dev->power.child_count)) retval = -EBUSY; //如果子设备不全部处于suspended,失败
+            if (dev->power.runtime_status != RPM_ACTIVE) retval = -EAGAIN; //如果设备本来就不处于RPM_ACTIVE,直接返回           
+            callback = RPM_GET_CALLBACK(dev, runtime_idle); //__rpm_get_callback
+                ops = &dev->pm_domain->ops;  或
+                ops = dev->type->pm;         或
+                ops = dev->class->pm;        或
+                ops = dev->bus->pm;          或                                
+                cb = dev->driver->pm; 
+            retval = __rpm_callback(callback, dev); 
+            wake_up_all
+            
+            

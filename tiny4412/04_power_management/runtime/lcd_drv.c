@@ -21,6 +21,7 @@
 #include <linux/fb.h>
 #include <asm/types.h>
 #include <linux/suspend.h>
+#include <linux/pm_runtime.h>
 
 
 #define         VIDCON0                 0x00
@@ -64,8 +65,8 @@ static inline unsigned int chan_to_field(unsigned int chan, struct fb_bitfield *
     return chan << bf->offset;//返回保留的位，且在原位置
 }
 static int cfb_setcolreg(unsigned int regno, unsigned int red,
-                               unsigned int green, unsigned int blue,
-                               unsigned int transp, struct fb_info *info)
+                         unsigned int green, unsigned int blue,
+                         unsigned int transp, struct fb_info *info)
 {
 
     unsigned int color = 0;
@@ -73,65 +74,97 @@ static int cfb_setcolreg(unsigned int regno, unsigned int red,
     color  = chan_to_field(red,   &info->var.red);
     color |= chan_to_field(green, &info->var.green);
     color |= chan_to_field(blue,  &info->var.blue);
-    
-    p = info->pseudo_palette;  
+
+    p = info->pseudo_palette;
     p[regno] = color;
+    return 0;
+}
+
+static int s702_lcd_open(struct fb_info *info, int user)
+{
+    struct device *dev = info->dev;
+    int ret;
+
+    printk("enter %s\n", __func__);
+
+    ret = pm_runtime_get_sync(dev);
+    if (ret < 0 && ret != -EACCES)
+    {
+        //pm_runtime_put_sync(dev);
+        pm_runtime_mark_last_busy(dev);
+        pm_runtime_put_autosuspend(dev);
+        return ret;
+    }
+
+    return 0;
+}
+static int s702_lcd_release(struct fb_info *info, int user)
+{
+    struct device *dev = info->dev;
+
+    printk("enter %s\n", __func__);
+
+    //pm_runtime_put_sync(dev);
+    pm_runtime_mark_last_busy(dev);
+    pm_runtime_put_sync_autosuspend(dev);
+
     return 0;
 }
 
 static struct fb_ops tiny4412_lcdfb_ops =
 {
     .owner              = THIS_MODULE,
-    .fb_setcolreg       = cfb_setcolreg, //设置调色板，实现伪颜色表 
+    .fb_setcolreg       = cfb_setcolreg, //设置调色板，实现伪颜色表
     .fb_fillrect        = cfb_fillrect,  //填充矩形
     .fb_copyarea        = cfb_copyarea,  //数据复制
     .fb_imageblit       = cfb_imageblit, //图形填充
+
+    .fb_open            = s702_lcd_open,
+    .fb_release         = s702_lcd_release
 };
-       
+
 static int lcd_suspend_notifier(struct notifier_block *nb, unsigned long event, void *dummy)
 {
-	switch (event) {
-	case PM_SUSPEND_PREPARE:
-		printk("lcd suspend notifiler test: PM_SUSPEND_PREPARE\n");
-		return NOTIFY_OK;
-	case PM_POST_SUSPEND:
-		printk("lcd suspend notifiler test: PM_POST_SUSPEND\n");
-		return NOTIFY_OK;
+    switch (event)
+    {
+    case PM_SUSPEND_PREPARE:
+        printk("lcd suspend notifiler test: PM_SUSPEND_PREPARE\n");
+        return NOTIFY_OK;
+    case PM_POST_SUSPEND:
+        printk("lcd suspend notifiler test: PM_POST_SUSPEND\n");
+        return NOTIFY_OK;
 
-	default:
-		return NOTIFY_DONE;
-	}
+    default:
+        return NOTIFY_DONE;
+    }
 }
-       
-static struct notifier_block lcd_pm_notif_block = {
-	.notifier_call = lcd_suspend_notifier,
+
+static struct notifier_block lcd_pm_notif_block =
+{
+    .notifier_call = lcd_suspend_notifier,
 };
-        
+
 static int lcd_probe(struct platform_device *pdev)
 {
     int ret;
     unsigned int temp;
-    
-    /* 电源管理 */
-	ret = register_pm_notifier(&lcd_pm_notif_block);
-    if(ret) {
-        printk("failed to register pm notifier.\n");
-        return  -EINVAL;
-    }
-    
+
+    printk("enter %s\n", __func__);
+
     /* 1. 分配一个fb_info */
     tiny4412_lcd = framebuffer_alloc(0, NULL);                        //不要额外空间设置私有数据
-    if(!tiny4412_lcd) {
+    if(!tiny4412_lcd)
+    {
         return  -ENOMEM;
     }
-   
+
     /* 2. 设置 */
     /* 2.1 设置 fix 固定的参数 */
     strcpy(tiny4412_lcd->fix.id, "s702");                              //设置fix名称
-    tiny4412_lcd->fix.smem_len = LCD_LENTH*LCD_WIDTH*BITS_PER_PIXEL/8; //显存的长度=分辨率*每象素字节数
+    tiny4412_lcd->fix.smem_len = LCD_LENTH * LCD_WIDTH * BITS_PER_PIXEL / 8; //显存的长度=分辨率*每象素字节数
     tiny4412_lcd->fix.type     = FB_TYPE_PACKED_PIXELS;                //类型:填充式像素(常用在TFT屏幕)
     tiny4412_lcd->fix.visual   = FB_VISUAL_TRUECOLOR;                  //TFT 真彩色
-    tiny4412_lcd->fix.line_length = LCD_LENTH*BITS_PER_PIXEL/8;        //每行的长度，以字节为单位
+    tiny4412_lcd->fix.line_length = LCD_LENTH * BITS_PER_PIXEL / 8;    //每行的长度，以字节为单位
     /* 2.2 设置 var 可变的参数 */
     tiny4412_lcd->var.xres           = LCD_LENTH;                      //x方向分辨率
     tiny4412_lcd->var.yres           = LCD_WIDTH;                      //y方向分辨率
@@ -147,7 +180,7 @@ static int lcd_probe(struct platform_device *pdev)
     tiny4412_lcd->var.green.offset   = 8;    //绿
     tiny4412_lcd->var.blue.length    = 8;
     tiny4412_lcd->var.blue.offset    = 0;    //蓝
-    tiny4412_lcd->var.activate       = FB_ACTIVATE_NOW;      //使设置的值立即生效  
+    tiny4412_lcd->var.activate       = FB_ACTIVATE_NOW;      //使设置的值立即生效
     /* 2.3 设置操作函数 */
     tiny4412_lcd->fbops              = &tiny4412_lcdfb_ops;  //绑定操作函数
     /* 2.4 其他的设置 */
@@ -172,7 +205,7 @@ static int lcd_probe(struct platform_device *pdev)
         printk("devm_ioremap_resource error.\n");
         return -EINVAL;
     }
-    
+
     res1 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
     if (res1 == NULL)
     {
@@ -185,7 +218,7 @@ static int lcd_probe(struct platform_device *pdev)
         printk("devm_ioremap_resource error.\n");
         return -EINVAL;
     }
-    
+
     res2 = platform_get_resource(pdev, IORESOURCE_MEM, 2);
     if (res2 == NULL)
     {
@@ -196,19 +229,19 @@ static int lcd_probe(struct platform_device *pdev)
     /*
     devm_ioremap()和devm_ioremap_resource()区别：
     devm_ioremap()可以重复map相同的地址空间，devm_ioremap_resource()不可以。
-    一般SoC的中，各个硬件模块各自的memory region都有严格的划分(比如说USB host的地址空间绝对不会和flash host冲突)， 
-    所以一般的driver使用devm_ioremap()和devm_ioremap_resource()都行。 
+    一般SoC的中，各个硬件模块各自的memory region都有严格的划分(比如说USB host的地址空间绝对不会和flash host冲突)，
+    所以一般的driver使用devm_ioremap()和devm_ioremap_resource()都行。
     但这里，应该系统已经映射过一次了，所以使用devm_ioremap_resource()会报错。
     */
-    //lcd0_configuration = devm_ioremap_resource(&pdev->dev, res2);  
-    lcd0_configuration = devm_ioremap(&pdev->dev, res2->start, resource_size(res2));  
+    //lcd0_configuration = devm_ioremap_resource(&pdev->dev, res2);
+    lcd0_configuration = devm_ioremap(&pdev->dev, res2->start, resource_size(res2));
     if (lcd0_configuration == NULL)
     {
         printk("devm_ioremap_resource error.\n");
         return -EINVAL;
     }
     *(unsigned long *)lcd0_configuration = 7; //Reset Value = 0x00000007
-        
+
     res3 = platform_get_resource(pdev, IORESOURCE_MEM, 3);
     if (res3 == NULL)
     {
@@ -216,7 +249,7 @@ static int lcd_probe(struct platform_device *pdev)
         return -EINVAL;
     }
     //clk_regs_base = devm_ioremap_resource(&pdev->dev, res3);
-	clk_regs_base = devm_ioremap(&pdev->dev, res3->start, resource_size(res3));  
+    clk_regs_base = devm_ioremap(&pdev->dev, res3->start, resource_size(res3));
     if (clk_regs_base == NULL)
     {
         printk("devm_ioremap_resource error.\n");
@@ -226,44 +259,44 @@ static int lcd_probe(struct platform_device *pdev)
     //Selects clock source for LCD_BLK
     //FIMD0_SEL:bit[3:0]=0110=SCLKMPLL_USER_T=800M
     temp = readl(clk_regs_base + CLK_SRC_LCD0);
-    temp &= ~(0x0F<<0);
-    temp |= (0x3<<1);
+    temp &= ~(0x0F << 0);
+    temp |= (0x3 << 1);
     writel(temp, clk_regs_base + CLK_SRC_LCD0);
 
-    //Clock source mask for LCD_BLK    
+    //Clock source mask for LCD_BLK
     //FIMD0_MASK:Mask output clock of MUXFIMD0 (1=Unmask)
     temp = readl(clk_regs_base + CLK_SRC_MASK_LCD);
-    temp |= (0x01<<0);
+    temp |= (0x01 << 0);
     writel(temp, clk_regs_base + CLK_SRC_MASK_LCD);
 
-    //Clock source mask for LCD_BLK    
+    //Clock source mask for LCD_BLK
     //SCLK_FIMD0 = MOUTFIMD0/(FIMD0_RATIO + 1),分频比 1/1
     temp = readl(clk_regs_base + CLK_DIV_LCD);
-    temp &= ~(0x0F<<0);
+    temp &= ~(0x0F << 0);
     writel(temp, clk_regs_base + CLK_DIV_LCD);
 
-    //Controls IP clock gating for LCD_BLK   
+    //Controls IP clock gating for LCD_BLK
     //CLK_FIMD0:Gating all clocks for FIMD0 (1=Pass)
     temp = readl(clk_regs_base + CLK_GATE_IP_LCD);
-    temp |= (0x01<<0);
+    temp |= (0x01 << 0);
     writel(temp, clk_regs_base + CLK_GATE_IP_LCD);
-    
+
     //FIMDBYPASS_LBLK0:FIMD of LBLK0 Bypass Selection (1=FIMD Bypass)
     temp = readl(lcdblk_regs_base + LCDBLK_CFG);
-    temp |= (0x01<<1);
+    temp |= (0x01 << 1);
     writel(temp, lcdblk_regs_base + LCDBLK_CFG);
 
     //MIE0_DISPON:MIE0_DISPON: PWM output control (1=PWM outpupt enable)
     temp = readl(lcdblk_regs_base + LCDBLK_CFG2);
-    temp |= (0x01<<0);
+    temp |= (0x01 << 0);
     writel(temp, lcdblk_regs_base + LCDBLK_CFG2);
-    
+
     mdelay(1000);
-    
+
     //LCD时钟:  VCLK=FIMD*SCLK/(CLKVAL+1), where CLKVAL>=1
     //800/(19+1) == 40M<80M
     temp = readl(lcd_regs_base + VIDCON0);
-    temp |= (19<<6);
+    temp |= (19 << 6);
     writel(temp, lcd_regs_base + VIDCON0);
 
     /*
@@ -276,7 +309,7 @@ static int lcd_probe(struct platform_device *pdev)
     temp = readl(lcd_regs_base + VIDCON1);
     temp |= (1 << 9) | (1 << 7) | (1 << 5) | (1 << 6);
     writel(temp, lcd_regs_base + VIDCON1);
-    
+
     /*
      * VIDTCON0:
      * [23:16]:  VBPD+1=tvb-tvpw=23-11=12 --> VBPD=11
@@ -302,7 +335,7 @@ static int lcd_probe(struct platform_device *pdev)
      * Horizontal(水平) display size : 800
      * Vertical(垂直) display size : 480
      */
-    temp = ((LCD_WIDTH-1) << 11) | (LCD_LENTH << 0);
+    temp = ((LCD_WIDTH - 1) << 11) | (LCD_LENTH << 0);
     writel(temp, lcd_regs_base + VIDTCON2);
 
     /*
@@ -313,7 +346,7 @@ static int lcd_probe(struct platform_device *pdev)
      */
     temp = readl(lcd_regs_base + WINCON0);
     temp &= ~(0x0F << 2);
-    temp |= (0X01 << 15) | (0x0D << 2) | (0x01<<0);
+    temp |= (0X01 << 15) | (0x0D << 2) | (0x01 << 0);
     writel(temp, lcd_regs_base + WINCON0);
 
     //Enables Channel 0.
@@ -340,12 +373,12 @@ static int lcd_probe(struct platform_device *pdev)
      * bit0-10 : 指定OSD图像右下像素的垂直屏幕坐标
      * bit11-21: 指定OSD图像右下像素的水平屏幕坐标
      */
-    writel(((LCD_LENTH-1) << 11) | (LCD_WIDTH-1), lcd_regs_base + VIDOSD0B);
-    
+    writel(((LCD_LENTH - 1) << 11) | (LCD_WIDTH - 1), lcd_regs_base + VIDOSD0B);
+
     //Display On: ENVID and ENVID_F are set to "1".
     temp = readl(lcd_regs_base + VIDCON0);
-    writel(temp | (0x01<<1) | (0x01<<0), lcd_regs_base + VIDCON0);
-    
+    writel(temp | (0x01 << 1) | (0x01 << 0), lcd_regs_base + VIDCON0);
+
     /* 3.3 分配显存(framebuffer), 并把地址告诉LCD控制器 */
     // tiny4412_lcd->screen_base         显存虚拟地址
     // tiny4412_lcd->fix.smem_len        显存大小，前面计算的
@@ -358,62 +391,83 @@ static int lcd_probe(struct platform_device *pdev)
 
     /* 4. 注册 */
     ret = register_framebuffer(tiny4412_lcd);
+
+    /* Power Management */
+    //Suspend
+    ret = register_pm_notifier(&lcd_pm_notif_block);
+    if(ret)
+    {
+        printk("failed to register pm notifier.\n");
+        return  -EINVAL;
+    }
+    //Runtime
+    pm_runtime_set_active(&pdev->dev);
+    pm_runtime_use_autosuspend(&pdev->dev);//add autosleep
+    pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
+    pm_runtime_enable(&pdev->dev);
+
     return ret;
 }
 
 static int lcd_remove(struct platform_device *pdev)
 {
-    //Direct Off: ENVID and ENVID_F are set to "0" simultaneously. 
+    //Direct Off: ENVID and ENVID_F are set to "0" simultaneously.
     unsigned int temp;
     temp = readl(lcd_regs_base + VIDCON0);
-    temp &= ~(0x01<<1 | 0x01<<0); 
+    temp &= ~(0x01 << 1 | 0x01 << 0);
     writel(temp, lcd_regs_base + VIDCON0);
+
+    pm_runtime_disable(&pdev->dev);
 
     unregister_framebuffer(tiny4412_lcd);
     dma_free_writecombine(NULL, tiny4412_lcd->fix.smem_len, tiny4412_lcd->screen_base, tiny4412_lcd->fix.smem_start);
     framebuffer_release(tiny4412_lcd);
+
     return 0;
 }
 
-static int lcd_suspend(struct device *dev)
+static int s702_lcd_suspend(struct device *dev)
 {
     //lcd休眠操作
-    //Direct Off: ENVID and ENVID_F are set to "0" simultaneously. 
+    //Direct Off: ENVID and ENVID_F are set to "0" simultaneously.
     unsigned int temp;
-    
+
     printk("enter %s\n", __func__);
-    
+
     temp = readl(lcd_regs_base + VIDCON0);
-    temp &= ~(0x01<<1 | 0x01<<0); 
+    temp &= ~(0x01 << 1 | 0x01 << 0);
     writel(temp, lcd_regs_base + VIDCON0);
-    
-	return 0;
+
+    return 0;
 }
 
-static int lcd_resume(struct device *dev)
+static int s702_lcd_resume(struct device *dev)
 {
     //lcd唤醒操作
     //Display On: ENVID and ENVID_F are set to "1".
     unsigned int temp;
 
     printk("enter %s\n", __func__);
-    
+
     temp = readl(lcd_regs_base + VIDCON0);
-    writel(temp | (0x01<<1) | (0x01<<0), lcd_regs_base + VIDCON0);
-    
-  	return 0;
+    writel(temp | (0x01 << 1) | (0x01 << 0), lcd_regs_base + VIDCON0);
+
+    return 0;
 }
 
-static struct dev_pm_ops lcd_pm = {
-	.suspend = lcd_suspend,
-	.resume  = lcd_resume,	
+static struct dev_pm_ops lcd_pm =
+{
+    .suspend = s702_lcd_suspend,
+    .resume  = s702_lcd_resume,
+    .runtime_suspend = s702_lcd_suspend,
+    .runtime_resume  = s702_lcd_resume,
 };
 
 static const struct of_device_id lcd_dt_ids[] =
 {
     { .compatible = "tiny4412, lcd_s702", },
     {},
-}; 
+};
 MODULE_DEVICE_TABLE(of, lcd_dt_ids);
 
 static struct platform_driver lcd_driver =
@@ -430,19 +484,19 @@ static int lcd_init(void)
 {
     int ret;
     printk("enter %s\n", __func__);
-    
+
     ret = platform_driver_register(&lcd_driver);
     if (ret)
     {
         printk(KERN_ERR "lcd: probe fail: %d\n", ret);
     }
-    
+
     return ret;
 }
 static void lcd_exit(void)
 {
     printk("enter %s\n", __func__);
-    
+
     platform_driver_unregister(&lcd_driver);
 }
 module_init(lcd_init);

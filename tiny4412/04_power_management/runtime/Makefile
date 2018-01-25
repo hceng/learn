@@ -5,7 +5,7 @@ all:
 
 clean:
 	make -C $(KERN_DIR) M=`pwd` modules clean
-	rm -rf modules.order 
+	rm -rf modules.order app
 
 obj-m	+= button_interrupt.o
 obj-m	+= lcd_drv.o
