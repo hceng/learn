@@ -1,0 +1,10 @@
+/*linux-4.13.9*/
+先获取regulator：
+devm_regulator_get (drivers\regulator\devres.c)
+    _regulator_get (drivers\regulator\core.c)
+        regulator_dev_lookup
+            of_get_regulator //首先在dts里查找
+            list_for_each_entry //如果在dts没找到，再尝试通过C文件方式查找
+
+
+            
