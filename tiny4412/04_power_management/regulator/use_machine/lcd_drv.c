@@ -22,6 +22,7 @@
 #include <asm/types.h>
 #include <linux/suspend.h>
 #include <linux/pm_runtime.h>
+#include <linux/regulator/consumer.h>
 
 
 #define         VIDCON0                 0x00
@@ -88,15 +89,13 @@ static int s702_lcd_open(struct fb_info *info, int user)
     printk("enter %s\n", __func__);
 
     ret = pm_runtime_get_sync(dev);
-
     if (ret < 0 && ret != -EACCES)
     {
-        printk("failed to pm_runtime_get_sync.\n");
-
-        pm_runtime_put_sync(dev);
+        //pm_runtime_put_sync(dev);
+        pm_runtime_mark_last_busy(dev);
+        pm_runtime_put_autosuspend(dev);
         return ret;
     }
-
 
     return 0;
 }
@@ -146,13 +145,14 @@ static struct notifier_block lcd_pm_notif_block =
     .notifier_call = lcd_suspend_notifier,
 };
 
+static struct regulator *tiny4412_regulator;
 static int lcd_probe(struct platform_device *pdev)
 {
     int ret;
     unsigned int temp;
 
     printk("enter %s\n", __func__);
-
+    
     /* 1. 分配一个fb_info */
     tiny4412_lcd = framebuffer_alloc(0, NULL);                        //不要额外空间设置私有数据
     if(!tiny4412_lcd)
@@ -403,22 +403,31 @@ static int lcd_probe(struct platform_device *pdev)
         return  -EINVAL;
     }
     //Runtime
-    pm_runtime_set_autosuspend_delay(&pdev->dev, 2000);
+    
     pm_runtime_use_autosuspend(&pdev->dev);//add autosleep
-
-    pm_runtime_set_active(&pdev->dev);
+    pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
     pm_runtime_enable(&pdev->dev);
+    pm_runtime_set_active(&pdev->dev);
+    //regulator
+    tiny4412_regulator = regulator_get(&pdev->dev, "VCC_LCD");
+	if (IS_ERR(tiny4412_regulator)) {
+		printk("regulator_get error!\n");
+		return -EIO;
+	}
 
-    return ret;
+    return 0;
 }
 
 static int lcd_remove(struct platform_device *pdev)
 {
     //Direct Off: ENVID and ENVID_F are set to "0" simultaneously.
     unsigned int temp;
+    
     temp = readl(lcd_regs_base + VIDCON0);
     temp &= ~(0x01 << 1 | 0x01 << 0);
     writel(temp, lcd_regs_base + VIDCON0);
+
+    regulator_put(tiny4412_regulator);
 
     pm_runtime_disable(&pdev->dev);
 
@@ -434,12 +443,17 @@ static int s702_lcd_suspend(struct device *dev)
     //lcd休眠操作
     //Direct Off: ENVID and ENVID_F are set to "0" simultaneously.
     unsigned int temp;
+    int ret;
 
     printk("enter %s\n", __func__);
-
+    
     temp = readl(lcd_regs_base + VIDCON0);
     temp &= ~(0x01 << 1 | 0x01 << 0);
     writel(temp, lcd_regs_base + VIDCON0);
+
+    ret = regulator_disable(tiny4412_regulator);
+    if (ret)
+        printk("Failed to disable tiny4412_regulator.\n");
 
     return 0;
 }
@@ -449,13 +463,19 @@ static int s702_lcd_resume(struct device *dev)
     //lcd唤醒操作
     //Display On: ENVID and ENVID_F are set to "1".
     unsigned int temp;
+    int ret;
 
     printk("enter %s\n", __func__);
+
+    ret = regulator_enable(tiny4412_regulator);
+    
+    if (ret)
+        printk("Failed to enable tiny4412_regulator.\n");
 
     temp = readl(lcd_regs_base + VIDCON0);
     writel(temp | (0x01 << 1) | (0x01 << 0), lcd_regs_base + VIDCON0);
 
-    return 0;
+    return ret;;
 }
 
 static struct dev_pm_ops lcd_pm =
