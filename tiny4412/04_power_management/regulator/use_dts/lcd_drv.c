@@ -407,7 +407,6 @@ static int lcd_probe(struct platform_device *pdev)
     pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
     pm_runtime_enable(&pdev->dev);
     pm_runtime_set_active(&pdev->dev);
-
     //regulator
     tiny4412_regulator = devm_regulator_get(&pdev->dev, "vlcd");
     if (IS_ERR(tiny4412_regulator))
