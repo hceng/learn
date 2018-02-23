@@ -146,6 +146,6 @@ module_exit(button_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("hceng <huangcheng.job@foxmail.com>");
-MODULE_DESCRIPTION("Tiny4412 button interrupt drvice.");
+MODULE_DESCRIPTION("Tiny4412 button interrupt driver.");
 MODULE_ALIAS("button");
 MODULE_VERSION("V1.0");

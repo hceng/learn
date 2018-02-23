@@ -450,6 +450,6 @@ module_exit(lcd_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("hceng <huangcheng.job@foxmail.com>");
-MODULE_DESCRIPTION("Tiny4412 LCD drvice.");
+MODULE_DESCRIPTION("Tiny4412 LCD driver.");
 MODULE_ALIAS("Exynos4412_s702");
 MODULE_VERSION("V1.0");

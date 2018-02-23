@@ -69,6 +69,6 @@ module_exit(tiny4412_regulator_machine_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("hceng <huangcheng.job@foxmail.com>");
-MODULE_DESCRIPTION("Tiny4412 machine drvice.");
+MODULE_DESCRIPTION("Tiny4412 machine driver.");
 MODULE_ALIAS("Exynos4412_machine");
 MODULE_VERSION("V1.0");

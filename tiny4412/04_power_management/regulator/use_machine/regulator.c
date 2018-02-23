@@ -111,6 +111,6 @@ module_exit(tiny4412_regulator_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("hceng <huangcheng.job@foxmail.com>");
-MODULE_DESCRIPTION("Tiny4412 regulator drvice.");
+MODULE_DESCRIPTION("Tiny4412 regulator driver.");
 MODULE_ALIAS("Exynos4412_regulator");
 MODULE_VERSION("V1.0");

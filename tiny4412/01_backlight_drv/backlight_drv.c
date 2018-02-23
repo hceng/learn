@@ -430,6 +430,6 @@ module_exit(backlight_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("hceng <huangcheng.job@foxmail.com>");
-MODULE_DESCRIPTION("Tiny4412 LCD backlight drvice.");
+MODULE_DESCRIPTION("Tiny4412 LCD backlight driver.");
 MODULE_ALIAS("Exynos4412_backlight");
 MODULE_VERSION("V1.0");
