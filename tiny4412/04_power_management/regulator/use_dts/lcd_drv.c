@@ -152,7 +152,7 @@ static int lcd_probe(struct platform_device *pdev)
     unsigned int temp;
 
     printk("enter %s\n", __func__);
-    
+
     /* 1. 分配一个fb_info */
     tiny4412_lcd = framebuffer_alloc(0, NULL);                        //不要额外空间设置私有数据
     if(!tiny4412_lcd)
@@ -407,13 +407,14 @@ static int lcd_probe(struct platform_device *pdev)
     pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
     pm_runtime_enable(&pdev->dev);
     pm_runtime_set_active(&pdev->dev);
-    
+
     //regulator
     tiny4412_regulator = devm_regulator_get(&pdev->dev, "vlcd");
-	if (IS_ERR(tiny4412_regulator)) {
-		printk("regulator_get error!\n");
-		return -EIO;
-	}
+    if (IS_ERR(tiny4412_regulator))
+    {
+        printk("regulator_get error!\n");
+        return -EIO;
+    }
 
     return 0;
 }
@@ -422,7 +423,7 @@ static int lcd_remove(struct platform_device *pdev)
 {
     //Direct Off: ENVID and ENVID_F are set to "0" simultaneously.
     unsigned int temp;
-    
+
     temp = readl(lcd_regs_base + VIDCON0);
     temp &= ~(0x01 << 1 | 0x01 << 0);
     writel(temp, lcd_regs_base + VIDCON0);
@@ -446,7 +447,7 @@ static int s702_lcd_suspend(struct device *dev)
     int ret;
 
     printk("enter %s\n", __func__);
-    
+
     temp = readl(lcd_regs_base + VIDCON0);
     temp &= ~(0x01 << 1 | 0x01 << 0);
     writel(temp, lcd_regs_base + VIDCON0);
@@ -468,7 +469,7 @@ static int s702_lcd_resume(struct device *dev)
     printk("enter %s\n", __func__);
 
     ret = regulator_enable(tiny4412_regulator);
-    
+
     if (ret)
         printk("Failed to enable tiny4412_regulator.\n");
 
