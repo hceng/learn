@@ -22,11 +22,12 @@
 
 #include "fillbuf.c"
 
-/* 队列操作a: 定义 */
-static struct videobuf_queue my_vivid_vb_vidqueue;
+/* 队列操作a: 定义自旋锁、定时器、buf队列 */
 static spinlock_t my_vivid_queue_slock;
-static struct list_head my_vivid_vb_local_queue;
 static struct timer_list my_vivid_timer;
+static struct videobuf_queue my_vivid_vb_vidqueue;
+static struct list_head my_vivid_vb_local_queue;
+
 
 static void my_vivid_timer_function(unsigned long data)
 {
@@ -405,7 +406,7 @@ static int my_vivid_probe(struct platform_device *pdev)
     my_vivid_dev->ioctl_ops = &my_vivid_ioctl_ops;
     my_vivid_dev->v4l2_dev  = &v4l2_dev;
 
-    //队列操作b://定义/初始化一个队列
+    //队列操作b:初始化自旋锁
     spin_lock_init(&my_vivid_queue_slock);
 
     /* 3.注册 */
