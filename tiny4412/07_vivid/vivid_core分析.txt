@@ -1,0 +1,328 @@
+/*linux-4.13.9*/
+>初始化、注册相关流程:
+vivid_probe (drivers\media\platform\vivid\vivid-core.c)
+    vivid_create_instance
+        kzalloc              //分配video_device [对应video_device_alloc] 
+        
+        v4l2_device_register //初始化自旋锁、引用计数等(不是核心)
+        
+        /*设置video_device*/
+        //1.vfd
+        vfd->fops = &vivid_fops; 
+        vfd->ioctl_ops = &vivid_ioctl_ops;
+        vfd->v4l2_dev = &dev->v4l2_dev;
+        //2.设置"ctrl"属性(用于app的ioctl)
+        vivid_create_controls    
+            v4l2_ctrl_handler_init  //初始化管理属性的链表v4l2_ctrl_handler
+            v4l2_ctrl_new_custom    //添加用户自定义属性
+            v4l2_ctrl_new_std       //添加标准属性V4L2_CID_AUDIO_VOLUME、V4L2_CID_AUDIO_MUTE等
+        
+        video_register_device       //注册video_device
+            __video_register_device //三个参数:video_device,type,num
+                if (vdev->ctrl_handler == NULL) vdev->ctrl_handler = vdev->v4l2_dev->ctrl_handler;
+                
+                cdev_alloc          //常规的注册字符设备方式
+                video_device[vdev->minor] = vdev; //将vdev放入video_device[]数组
+                vdev->cdev->ops = &v4l2_fops;
+                cdev_add
+ 
+
+
+>操作函数相关流程:
+1.open
+app:     open("dev/video0",...);
+--------------------------------
+drv:     v4l2_fops->v4l2_open (drivers\media\v4l2-core\v4l2-dev.c)
+            video_devdata    //根据次设备号从数组中得到video_device
+            vdev->fops->open //先找到v4l2_fops,再根据v4l2_fops找到vivid_fops里的v4l2_fh_open
+            
+2.read/write
+app:     read("dev/video0",...);
+--------------------------------
+drv:     v4l2_fops->v4l2_read
+            video_devdata
+            vdev->fops->read //vb2_fop_read
+
+3.ioctl
+app:     read("dev/video0",...);
+--------------------------------
+drv:     v4l2_fops->v4l2_ioctl
+            video_devdata
+            vdev->fops->unlocked_ioctl //video_ioctl2
+                video_usercopy         //参数调用__video_do_ioctl
+        
+        __video_do_ioctl     
+            video_devdata
+            const void *p = vfd->ioctl_ops;
+            const vidioc_op *vidioc = p + info->u.offset;
+            
+   
+
+
+测试虚拟摄像头vivid驱动: 
+//假设之前先插上过USB摄像头(会自动安装一些摄像头模块依赖)  
+/lib/modules/4.4.0-116-generic/kernel/drivers/media/v4l2-core
+videobuf-core.ko  
+v4l2-dv-timings.ko
+/lib/modules/4.4.0-116-generic/kernel/drivers/media/platform/vivid
+vivid.ko     
+
+sudo insmod videobuf-core.ko  
+sudo insmod videobuf-vmalloc.ko
+
+
+//假设未插上过USB摄像头
+sudo modprobe vivid     //安装自带vivid及依赖
+sudo rmmod vivid        //卸载自带的vivid
+sudo insmod ./vivid.ko  //安装自己编译的vivid.ko 
+
+sudo insmod /lib/modules/4.4.0-116-generic/kernel/drivers/media/v4l2-core/videobuf-core.ko  
+sudo insmod /lib/modules/4.4.0-116-generic/kernel/drivers/media/v4l2-core/videobuf-vmalloc.ko
+
+
+
+
+Linux usb 摄像头测试软件webcam spcaview luvcview xawtv
+1.
+sudo apt-get install luvcview (https://packages.ubuntu.com/zh-cn/source/trusty/luvcview)
+luvcview -h             //帮助信息
+luvcview -d /dev/videoX //指定设备
+luvcview -L             //查询当前摄像头所支持的所有数据格式以及分辨率信息 
+luvcview                //运行摄像头
+
+2.
+sudo apt-get install xawtv (https://www.kraxel.org/  https://linuxtv.org/downloads/xawtv/)
+xawtv -h                //帮助信息
+xawtv -c /dev/videoX    //指定设备
+xawtv -noalsa           //关闭声卡启动
+xawtv                   //运行摄像头
+
+
+
+得到xawtv进行了哪些系统调用:
+sudo strace -o xawtv.log xawtv
+
+
+无法修改Ubuntu打印等级(sudo echo "8  4    1    7" >/proc/sys/kernel/printk 权限不够)
+tmux分屏后,不分频也行，只显示增量
+tail -f /var/log/kern.log &    
+
+
+
+D:\xawtv-3.103\libng\plugins\drv0-v4l2.tmpl.c     
+            
+            
+            
+            
+static const struct v4l2_ioctl_ops vivid_ioctl_ops = {
+	/* 表示它是一个摄像头设备 */
+	.vidioc_querycap		= vidioc_querycap, 
+
+	
+	/* 摄像头数据格式的操作 */
+	.vidioc_enum_fmt_vid_cap	= vidioc_enum_fmt_vid,     //列举格式
+	.vidioc_g_fmt_vid_cap		= vidioc_g_fmt_vid_cap,    //获取格式
+	.vidioc_try_fmt_vid_cap		= vidioc_try_fmt_vid_cap,  //测试格式
+	.vidioc_s_fmt_vid_cap		= vidioc_s_fmt_vid_cap,    //设置格式
+	/* 支持multi-planar */
+	.vidioc_enum_fmt_vid_cap_mplane = vidioc_enum_fmt_vid_mplane,
+	.vidioc_g_fmt_vid_cap_mplane	= vidioc_g_fmt_vid_cap_mplane,
+	.vidioc_try_fmt_vid_cap_mplane	= vidioc_try_fmt_vid_cap_mplane,
+	.vidioc_s_fmt_vid_cap_mplane	= vidioc_s_fmt_vid_cap_mplane,
+
+	/* 数据输出操作 */
+	.vidioc_enum_fmt_vid_out	= vidioc_enum_fmt_vid,     //枚举输出格式
+	.vidioc_g_fmt_vid_out		= vidioc_g_fmt_vid_out,    //获取输出格式
+	.vidioc_try_fmt_vid_out		= vidioc_try_fmt_vid_out,  //测试输出格式
+	.vidioc_s_fmt_vid_out		= vidioc_s_fmt_vid_out,    //设置输出格式
+	/* 支持multi-planar */
+	.vidioc_enum_fmt_vid_out_mplane = vidioc_enum_fmt_vid_mplane,
+	.vidioc_g_fmt_vid_out_mplane	= vidioc_g_fmt_vid_out_mplane,
+	.vidioc_try_fmt_vid_out_mplane	= vidioc_try_fmt_vid_out_mplane,
+	.vidioc_s_fmt_vid_out_mplane	= vidioc_s_fmt_vid_out_mplane,
+
+	
+	.vidioc_g_selection		= vidioc_g_selection,          //获取选择矩形
+	.vidioc_s_selection		= vidioc_s_selection,          //设置选择矩形
+	.vidioc_cropcap			= vidioc_cropcap,              //查询裁剪限制
+
+	.vidioc_g_fmt_vbi_cap		= vidioc_g_fmt_vbi_cap,    //获取指向原始数据VBI的指针
+	.vidioc_try_fmt_vbi_cap		= vidioc_g_fmt_vbi_cap,
+	.vidioc_s_fmt_vbi_cap		= vidioc_s_fmt_vbi_cap,
+
+	.vidioc_g_fmt_sliced_vbi_cap    = vidioc_g_fmt_sliced_vbi_cap,
+	.vidioc_try_fmt_sliced_vbi_cap  = vidioc_try_fmt_sliced_vbi_cap,
+	.vidioc_s_fmt_sliced_vbi_cap    = vidioc_s_fmt_sliced_vbi_cap,
+	.vidioc_g_sliced_vbi_cap	= vidioc_g_sliced_vbi_cap,
+
+	.vidioc_g_fmt_vbi_out		= vidioc_g_fmt_vbi_out,
+	.vidioc_try_fmt_vbi_out		= vidioc_g_fmt_vbi_out,
+	.vidioc_s_fmt_vbi_out		= vidioc_s_fmt_vbi_out,
+
+	.vidioc_g_fmt_sliced_vbi_out    = vidioc_g_fmt_sliced_vbi_out,
+	.vidioc_try_fmt_sliced_vbi_out  = vidioc_try_fmt_sliced_vbi_out,
+	.vidioc_s_fmt_sliced_vbi_out    = vidioc_s_fmt_sliced_vbi_out,
+
+	.vidioc_enum_fmt_sdr_cap	= vidioc_enum_fmt_sdr_cap,
+	.vidioc_g_fmt_sdr_cap		= vidioc_g_fmt_sdr_cap,
+	.vidioc_try_fmt_sdr_cap		= vidioc_try_fmt_sdr_cap,
+	.vidioc_s_fmt_sdr_cap		= vidioc_s_fmt_sdr_cap,
+
+	.vidioc_overlay			= vidioc_overlay,
+	.vidioc_enum_framesizes		= vidioc_enum_framesizes,
+	.vidioc_enum_frameintervals	= vidioc_enum_frameintervals,
+	.vidioc_g_parm			= vidioc_g_parm,
+	.vidioc_s_parm			= vidioc_s_parm,
+
+	.vidioc_enum_fmt_vid_overlay	= vidioc_enum_fmt_vid_overlay,
+	.vidioc_g_fmt_vid_overlay	= vidioc_g_fmt_vid_overlay,
+	.vidioc_try_fmt_vid_overlay	= vidioc_try_fmt_vid_overlay,
+	.vidioc_s_fmt_vid_overlay	= vidioc_s_fmt_vid_overlay,
+	.vidioc_g_fmt_vid_out_overlay	= vidioc_g_fmt_vid_out_overlay,
+	.vidioc_try_fmt_vid_out_overlay	= vidioc_try_fmt_vid_out_overlay,
+	.vidioc_s_fmt_vid_out_overlay	= vidioc_s_fmt_vid_out_overlay,
+	.vidioc_g_fbuf			= vidioc_g_fbuf,
+	.vidioc_s_fbuf			= vidioc_s_fbuf,
+
+	/* 缓冲区操作 */
+	.vidioc_reqbufs			= vb2_ioctl_reqbufs,     	   //申请
+	.vidioc_create_bufs		= vb2_ioctl_create_bufs, 	   //创建
+	.vidioc_prepare_buf		= vb2_ioctl_prepare_buf, 	   //准备
+	.vidioc_querybuf		= vb2_ioctl_querybuf,    	   //查询
+	.vidioc_qbuf			= vb2_ioctl_qbuf,        	   //放入
+	.vidioc_dqbuf			= vb2_ioctl_dqbuf,       	   //取出
+	.vidioc_expbuf			= vb2_ioctl_expbuf,      	   //导出
+	.vidioc_streamon		= vb2_ioctl_streamon,    	   //启动
+	.vidioc_streamoff		= vb2_ioctl_streamoff,   	   //停止
+	                                                       
+	/* 输入源操作 */	                                   
+	.vidioc_enum_input		= vidioc_enum_input,     	   //枚举输入源
+	.vidioc_g_input			= vidioc_g_input,        	   //获取输入源
+	.vidioc_s_input			= vidioc_s_input, 		 	   //设置输入源
+	.vidioc_s_audio			= vidioc_s_audio,		 	   //设置音频
+	.vidioc_g_audio			= vidioc_g_audio,  	     	   //获取音频
+	.vidioc_enumaudio		= vidioc_enumaudio, 	 	   //枚举音频
+	.vidioc_s_frequency		= vidioc_s_frequency, 	 	   //设置频率
+	.vidioc_g_frequency		= vidioc_g_frequency,  	 	   //获取输入源
+	.vidioc_s_tuner			= vidioc_s_tuner,  		 	   //设置调谐器
+	.vidioc_g_tuner			= vidioc_g_tuner,  		 	   //获取调谐器
+	.vidioc_s_modulator		= vidioc_s_modulator, 	 	   //设置调制器
+	.vidioc_g_modulator		= vidioc_g_modulator,  	 	   //获取调制器
+	.vidioc_s_hw_freq_seek		= vidioc_s_hw_freq_seek,   //硬件频率搜索
+	.vidioc_enum_freq_bands		= vidioc_enum_freq_bands,  //枚举调谐器或调制器支持的频段
+
+	/* 输出端操作 */
+	.vidioc_enum_output		= vidioc_enum_output,          //枚举视频输出端
+	.vidioc_g_output		= vidioc_g_output,             //获取视频输出
+	.vidioc_s_output		= vidioc_s_output,             //设置视频输出
+	.vidioc_s_audout		= vidioc_s_audout,             //设置音频输出
+	.vidioc_g_audout		= vidioc_g_audout,             //获取音频输出
+	.vidioc_enumaudout		= vidioc_enumaudout,           //枚举视频输出端
+
+	/* 制式操作 */
+	.vidioc_querystd		= vidioc_querystd,             //查询制式
+	.vidioc_g_std			= vidioc_g_std,                //获取制式
+	.vidioc_s_std			= vidioc_s_std,                //设置制式
+	.vidioc_s_dv_timings		= vidioc_s_dv_timings,     //设置DV时序
+	.vidioc_g_dv_timings		= vidioc_g_dv_timings,     //获取DV时序
+	.vidioc_query_dv_timings	= vidioc_query_dv_timings, //查询DV时序
+	.vidioc_enum_dv_timings		= vidioc_enum_dv_timings,  //枚举DV时序
+	.vidioc_dv_timings_cap		= vidioc_dv_timings_cap,   //查询DV应用程序功能
+	.vidioc_g_edid			= vidioc_g_edid,               //获取EDID数据块
+	.vidioc_s_edid			= vidioc_s_edid, 			   //设置EDID数据块
+
+	/* 调试操作 */
+	.vidioc_log_status		= vidioc_log_status,           //输出设备状态到内核日志
+	.vidioc_subscribe_event		= vidioc_subscribe_event,  //订阅V4L2事件
+	.vidioc_unsubscribe_event	= v4l2_event_unsubscribe,  //取消订阅V4L2事件
+};            
+
+
+提取的必须ioctl:
+	/* 表示它是一个摄像头设备 */
+	.vidioc_querycap		= vidioc_querycap, 
+	
+	/* 摄像头数据格式的操作 */
+	.vidioc_enum_fmt_vid_cap	= vidioc_enum_fmt_vid,     //列举格式
+	.vidioc_g_fmt_vid_cap		= vidioc_g_fmt_vid_cap,    //获取格式
+	.vidioc_try_fmt_vid_cap		= vidioc_try_fmt_vid_cap,  //测试格式
+	.vidioc_s_fmt_vid_cap		= vidioc_s_fmt_vid_cap,    //设置格式
+	
+	/* 缓冲区操作 */
+	.vidioc_reqbufs			= vb2_ioctl_reqbufs,     	   //申请
+	//.vidioc_create_bufs		= vb2_ioctl_create_bufs, 	   //创建
+	//.vidioc_prepare_buf		= vb2_ioctl_prepare_buf, 	   //准备
+	.vidioc_querybuf		= vb2_ioctl_querybuf,    	   //查询
+	.vidioc_qbuf			= vb2_ioctl_qbuf,        	   //放入
+	.vidioc_dqbuf			= vb2_ioctl_dqbuf,       	   //取出
+	//.vidioc_expbuf			= vb2_ioctl_expbuf,      	   //导出
+	.vidioc_streamon		= vb2_ioctl_streamon,    	   //启动
+	.vidioc_streamoff		= vb2_ioctl_streamoff,   	   //停止
+           
+		   
+数据获取过程分析：
+1.请求分配缓冲区
+app:ioctl(fd, VIDIOC_REQBUFS, xx)
+	videobuf_reqbufs(vdev->queue, p->memory, &p->count);//没分配真正buf
+             
+2.查询映射缓冲区
+app:ioctl(fd, VIDIOC_QUERYBUF, xx)
+	videobuf_querybuf //获得buf的数据格式、大小、每一行长度、高度
+
+	v4l2_mmap
+		vb2_fop_mmap
+			videobuf_mmap_mapper
+				__videobuf_mmap_mapper
+					mem->vaddr = vmalloc_user(pages); //这里分配buf
+		
+3.把缓冲区放入队列
+app:ioctl(fd, VIDIOC_QBUF, xx)
+	videobuf_qbuf
+		q->ops->buf_prepare(q, buf, field);      //调用驱动程序提供的函数做预处理
+		list_add_tail(&buf->stream, &q->stream); //把缓冲区放入队列的尾部
+		q->ops->buf_queue(q, buf);               //用驱动程序提供的"入队列函数"
+
+4.启动摄像头            
+app:ioctl(fd, VIDIOC_STREAMON, xx)
+	videobuf_streamon   
+		q->streaming = 1;
+		
+5.用select查询是否有数据       
+	v4l2_poll
+		vdev->fops->poll();
+			vivi_poll 
+				videobuf_poll_stream
+					buf = list_entry();  //从队列的头部获得buf
+					poll_wait();         //如果没有数据则休眠
+			
+	vivid_thread_vid_cap                 //内核进程唤醒
+		vivid_thread_vid_cap_tick
+			vivid_fillbuff				 //构造数据
+			vb2_buffer_done 	 
+				wake_up();  			 //唤醒进程
+						
+6.有数据后,从队列取出缓冲区   
+app:ioctl(fd, VIDIOC_DQBUF, xx)   //使用VIDIOC_DQBUF获取buf状态
+	videobuf_dqbuf
+		stream_next_buffer  //在队列里获得有数据的缓冲区
+		list_del            //把它从队列中删掉
+		videobuf_status     //把这个缓冲区的状态返回给APP
+		
+
+7.应用程序根据VIDIOC_DQBUF所得到缓冲区状态，
+知道是哪一个缓冲区有数据,
+就去读对应的地址(该地址来自前面的mmap)     
+            
+            
+怎么写摄像头驱动程序:   
+1. 分配video_device:video_device_alloc
+2. 设置
+   .fops
+   .ioctl_ops (里面需要设置11项)
+   如果要用内核提供的缓冲区操作函数，还需要构造一个videobuf_queue_ops
+3. 注册: video_register_device        
+            
+            
+            
+            
+            
