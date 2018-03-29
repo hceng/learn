@@ -1,0 +1,4 @@
+Use:
+cd /work/imx6ul/sd
+./mkimage -n imximage.cfg.cfgtmp -T imximage -e 0x87800000 -d /work/imx6ul/led/led.bin myled.bin
+sudo dd if=myled.bin of=/dev/sdb bs=512 seek=2 conv=fsync

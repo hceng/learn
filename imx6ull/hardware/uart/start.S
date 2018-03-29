@@ -1,0 +1,15 @@
+	
+.text
+.global  _start
+_start: 				
+
+@…Ë÷√’ª
+
+	ldr  sp,=0x90000000
+	
+	bl  main
+
+halt:
+	b  halt 
+
+
