@@ -92,7 +92,7 @@ static void uart1_config(void)
 	UART1_UTIM = (0);
 	UART1_UTS  = (0);	
 	
-	clk = get_uart_clk();
+	clk = get_uart_clk(); // µ≤‚ «25952384
 	UART1_UFCR = (4<<7 | 2<<10 | 1<<0);
 	//UART1_UFCR = (4<<7);
 	UART1_UBIR = (0xf);
