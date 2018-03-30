@@ -1,29 +1,27 @@
-PREFIX= arm-none-linux-gnueabi-
+PREFIX=arm-none-linux-gnueabi-
 CC=$(PREFIX)gcc
 LD=$(PREFIX)ld
 AR=$(PREFIX)ar
 OBJCOPY=$(PREFIX)objcopy
 OBJDUMP=$(PREFIX)objdump
 
-#INCLUDEDIR 	:= $(shell pwd)/include/
-
-#CPPFLAGS   	:= -nostdlib -I$(INCLUDEDIR) 
-
 # Add GCC lib
 PLATFORM_LIBS += -L $(shell dirname `$(CC) $(CFLAGS) -print-libgcc-file-name`) -lgcc
 
-imx6ul.bin : start.S  led.c uart.c printf.c main.c
+rk3288.bin : start.S  led.c uart.c  printf.c main.c
 	$(CC) -nostdlib -g -c -o start.o start.S
 	$(CC) -nostdlib -g -c -o led.o led.c	
 	$(CC) -nostdlib -g -c -o uart.o uart.c	
 	$(CC) -nostdlib -g -c -o printf.o printf.c	
 	$(CC) -nostdlib -g -c -o main.o main.c	
-	$(LD) -Timx6ul.lds -g start.o led.o uart.o printf.o main.o -o imx6ul_elf $(PLATFORM_LIBS)
-	$(OBJCOPY) -O binary -S imx6ul_elf imx6ul.bin
-	$(OBJDUMP) -D -m arm  imx6ul_elf > imx6ul.dis	
+	
+	$(LD) -Trk3288.lds -g start.o led.o uart.o printf.o  main.o -o rk3288_elf  $(PLATFORM_LIBS)
+	
+	$(OBJCOPY) -O binary -S rk3288_elf rk3288.bin
+	$(OBJDUMP) -D -m arm  rk3288_elf > rk3288.dis	
 
 clean:
-	rm -f imx6ul.dis  imx6ul.bin imx6ul_elf  *.o
+	rm -f rk3288.dis  rk3288.bin rk3288_elf  *.o
 
 
 	

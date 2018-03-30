@@ -1,10 +1,8 @@
 SECTIONS {
-    . = 0x80000000;
+    . = 0x90000;  /* 0xFF700000;*/
     .text : { start.o(.text)
 			  main.o(.text)
               led.o(.text)
-              uart.o(.text)
-			  printf.o(.text)
               *(.text) 
             }
     .rodata ALIGN(4) : {*(.rodata*)} 

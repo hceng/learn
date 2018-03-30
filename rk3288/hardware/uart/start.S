@@ -4,7 +4,7 @@
 _start: 				
 
 @设置栈
-	ldr  sp,=0x90000000	@设置栈
+	ldr  sp,=0x80000000	@设置栈,2G DDR的最高位置
 
 	bl relocate      @重定位
 	@bl clean_bss     @清BSS段
@@ -17,7 +17,7 @@ halt:
 	b  halt 
 	
 relocate:
-    adr r0, _start  @r0:代码当前被放在的位置,由硬件特性决定
+    adr r0, _start  @r0:代码当前被放在的位置,实测出来是0x00000000,由硬件特性决定
 	ldr r1, =_start @r1:代码期望被放在的位置,即链接脚本里的地址,用户想放在的位置,比如SDRAM
 					@当两者相同则不用重定位,否则需要重定位
 	cmp r0, r1      @比较r0和r1
