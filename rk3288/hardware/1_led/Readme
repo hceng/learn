@@ -1,0 +1,3 @@
+cd code; make; cd -;
+
+./boot_merger rk3288.ini
