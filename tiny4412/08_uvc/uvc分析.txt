@@ -1,0 +1,235 @@
+/*linux-4.13.9*/
+
+UVC: USB Video Class
+UVC驱动:linux-4.13.9/drivers/media/usb/uvc/
+
+uvc_driver.c分析:
+1.构造usb_driver
+2.uvc_probe
+	kzalloc //分配
+	uvc_register_chains  
+		uvc_register_terms
+			uvc_register_video
+				vdev->fops = &uvc_fops; //设置
+				vdev->ioctl_ops = &uvc_ioctl_ops;
+				video_register_device //注册
+3.usb_register //注册usb_driver
+
+
+UVC资料:
+http://www.usb.org/developers/docs/devclass_docs/  
+Video Class -> Video Class 1.5 document set (.zip format, size 6.58MB)
+
+UVC 1.5 Class specification.pdf : 有详细描述
+USB_Video_Example 1.5.pdf    : 有示例
+
+
+UVC驱动调用过程分析:
+const struct v4l2_file_operations uvc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= uvc_v4l2_open,
+	.release	= uvc_v4l2_release,
+	.unlocked_ioctl	= video_ioctl2,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl32	= uvc_v4l2_compat_ioctl32,
+#endif
+	.read		= uvc_v4l2_read,
+	.mmap		= uvc_v4l2_mmap,
+	.poll		= uvc_v4l2_poll,
+#ifndef CONFIG_MMU
+	.get_unmapped_area = uvc_v4l2_get_unmapped_area,
+#endif
+};
+
+1.open
+	uvc_v4l2_open
+
+2.mmap
+	uvc_v4l2_mmap
+		uvc_queue_mmap
+			vb2_mmap
+3.poll
+	uvc_v4l2_poll
+		uvc_queue_poll
+			vb2_poll
+			
+4.ioctl(11个)
+video_ioctl2
+	video_usercopy
+		__video_do_ioctl
+			v4l2_ioctls[] //找到对应的uvc_ioctl_ops
+	
+VIDIOC_QUERYCAP	
+	uvc_ioctl_querycap 
+			cap->capabilities = V4L2_CAP_DEVICE_CAPS | V4L2_CAP_STREAMING | chain->caps;
+			if (stream->type == V4L2_BUF_TYPE_VIDEO_CAPTURE)
+				cap->device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING;
+			else
+				cap->device_caps = V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_STREAMING;
+	
+VIDIOC_ENUM_FMT	
+	vc_ioctl_enum_fmt_vid_cap //
+		uvc_ioctl_enum_fmt
+			format = &stream->format[fmt->index];
+
+VIDIOC_G_FMT	
+	uvc_ioctl_g_fmt_vid_cap //USB摄像头支持多种格式fromat, 每种格式下有多种frame(比如分辨率)
+		uvc_v4l2_get_format
+			format = stream->cur_format;
+			frame = stream->cur_frame;
+
+VIDIOC_TRY_FMT
+	uvc_ioctl_try_fmt_vid_cap
+		uvc_v4l2_try_format
+		//Check if the hardware supports the requested format, use the default format otherwise.
+		//Find the closest image size. .
+
+VIDIOC_S_FMT //只是把参数保存起来，还没有发给USB摄像头
+	uvc_ioctl_s_fmt_vid_cap	
+		uvc_v4l2_set_format
+			uvc_v4l2_try_format
+			stream->cur_format = format;
+			stream->cur_frame = frame;
+VIDIOC_REQBUFS
+	uvc_ioctl_reqbufs
+		uvc_request_buffers
+			vb2_reqbufs
+				vb2_core_reqbufs
+
+VIDIOC_QUERYBUF	
+	uvc_ioctl_querybuf	
+		uvc_query_buffer
+			vb2_querybuf
+				vb2_core_querybuf
+
+VIDIOC_QBUF
+	uvc_ioctl_qbuf
+		uvc_queue_buffer
+			vb2_qbuf
+				vb2_core_qbuf
+			
+VIDIOC_DQBUF	
+	uvc_ioctl_dqbuf
+		uvc_dequeue_buffer
+			vb2_dqbuf
+				vb2_core_dqbuf
+			
+VIDIOC_STREAMON	
+	uvc_ioctl_streamon
+		uvc_queue_streamon
+			vb2_streamon
+				vb2_core_streamon
+
+VIDIOC_STREAMOFF
+	uvc_ioctl_streamoff	
+		uvc_queue_streamoff
+			vb2_streamoff
+				vb2_core_streamoff
+
+ioctl里buf相关的函数都是调用videobuf2-v4l2.c提供的函数
+
+
+static const struct vb2_ops uvc_queue_qops = {
+	.queue_setup = uvc_queue_setup,
+	.buf_prepare = uvc_buffer_prepare,
+	.buf_queue = uvc_buffer_queue,
+	.buf_finish = uvc_buffer_finish,
+	.wait_prepare = vb2_ops_wait_prepare,
+	.wait_finish = vb2_ops_wait_finish,
+	.start_streaming = uvc_start_streaming,
+	.stop_streaming = uvc_stop_streaming,
+};
+
+uvc_start_streaming
+	uvc_video_enable //把所设置的参数发给硬件,然后启动摄像头
+		uvc_commit_video //Commit the streaming parameters.
+			uvc_set_video_ctrl //设置格式fromat, frame
+				 __uvc_query_ctrl //哪一个USB设备，哪一个接口(VS)
+				
+		uvc_init_video //启动:Initialize isochronous/bulk URBs and allocate transfer buffers.	
+			uvc_init_video_isoc	
+				urb->complete = uvc_video_complete; //收到数据后调用去唤醒poll
+				…… wake_up(&buf->wait);				
+			usb_submit_urb
+		
+分析设置亮度过程:
+VIDIOC_S_CTRL
+	uvc_ioctl_s_ctrl
+		uvc_ctrl_set //设置
+		uvc_ctrl_commit //提交
+			__uvc_ctrl_commit
+				uvc_ctrl_commit_entity
+					uvc_query_ctrl //参数dev:哪一个USB设备;ctrl->entity->id:哪一个unit/terminal;dev->intfnum:哪一个接口(VC interface);
+
+
+总结：
+1. UVC设备有2个interface: VideoControl Interface, VideoStreaming Interface
+
+2. VideoControl Interface用于控制，比如设置亮度。它内部有多个Unit/Terminal(在程序里Unit/Terminal都称为entity)
+   可以通过类似的函数来访问：
+	ret = uvc_query_ctrl(dev  /* 哪一个USB设备 */, SET_CUR, ctrl->entity->id  /* 哪一个unit/terminal */,
+			dev->intfnum /* 哪一个接口: VC interface */, ctrl->info->selector,
+			uvc_ctrl_data(ctrl, UVC_CTRL_DATA_CURRENT),
+			ctrl->info->size);
+			
+3. VideoStreaming Interface用于获得视频数据，也可以用来选择fromat/frame(VS可能有多种format,一个format支持多种frame,frame用来表示分辨率等信息)
+   可以通过类似的函数来访问：
+	ret = __uvc_query_ctrl(video->dev /* 哪一个USB设备 */, SET_CUR, 0,
+		video->streaming->intfnum  /* 哪一个接口: VS */,
+		probe ? VS_PROBE_CONTROL : VS_COMMIT_CONTROL, data, size,
+		uvc_timeout_param);
+		
+4. 我们在设置FORMAT时只是简单的使用video->streaming->format[fmt->index]等数据，
+   这些数据哪来的？
+   应是设备被枚举时设置的，也就是分析它的描述符时设置的。
+
+5. UVC驱动的重点在于：
+   描述符的分析
+   属性的控制: 通过VideoControl Interface来设置
+   格式的选择：通过VideoStreaming Interface来设置
+   数据的获得：通过VideoStreaming Interface的URB来获得
+
+				
+-----------------------------------------------------
+lsusb
+Bus 002 Device 008: ID 1b3b:2977 iPassion Technology Inc.				
+				
+lsusb -v -d 0x1b3b:2977				
+				
+				
+				
+数据格式：my_uvc_format
+数据队列：my_uvc_queue，包含buf信息：my_uvc_buffer 与应用层的交互
+URB：urb和urb_buffer,与USB设备进行交互
+				
+				
+				
+				
+				
+				
+[138717.986800] video params:
+[138717.986806] bmHint                   = 1
+[138717.986808] bFormatIndex             = 1
+[138717.986810] bFrameIndex              = 2
+[138717.986811] dwFrameInterval          = 333333
+[138717.986813] wKeyFrameRate            = 0
+[138717.986814] wPFrameRate              = 0
+[138717.986816] wCompQuality             = 0
+[138717.986817] wCompWindowSize          = 0
+[138717.986819] wDelay                   = 0
+[138717.986820] dwMaxVideoFrameSize      = 77312
+[138717.986822] dwMaxPayloadTransferSize = 800
+[138717.986823] dwClockFrequency         = 0
+[138717.986825] bmFramingInfo            = 0
+[138717.986826] bPreferedVersion         = 0
+[138717.986828] bMinVersion              = 0
+[138717.986829] bMinVersion              = 0
+				
+				
+				
+				
+				
+				
+				
+				
+				

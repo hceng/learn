@@ -87,7 +87,7 @@ struct my_uvc_streaming_control
 static struct my_uvc_streaming_control my_uvc_params;
 static struct usb_device *my_uvc_udev;
 
-#define MY_UVC_URBS_NUM  2  //限制最多2个urb 
+#define MY_UVC_URBS_NUM  2  //限制最多2个urb,一个也行
 static int my_uvc_streaming_intf; //VS
 static int my_uvc_control_intf;   //VC
 
@@ -481,6 +481,8 @@ int my_uvc_vidioc_queryctrl (struct file *file, void *fh, struct v4l2_queryctrl 
 {
     unsigned char data[2];  
 
+    printk("enter %s\n", __func__);
+
     if (ctrl->id != V4L2_CID_BRIGHTNESS)     //这里只操作控制亮度的v4l2_queryctrl
         return -EINVAL;
 
@@ -528,6 +530,8 @@ int my_uvc_vidioc_g_ctrl (struct file *file, void *fh, struct v4l2_control *ctrl
 {
     unsigned char data[2];
 
+    printk("enter %s\n", __func__);
+
     if (ctrl->id != V4L2_CID_BRIGHTNESS)
         return -EINVAL;
 
@@ -544,6 +548,8 @@ int my_uvc_vidioc_g_ctrl (struct file *file, void *fh, struct v4l2_control *ctrl
 int my_uvc_vidioc_s_ctrl (struct file *file, void *fh, struct v4l2_control *ctrl)
 {
     unsigned char data[2];
+
+    printk("enter %s\n", __func__);
 
     if (ctrl->id != V4L2_CID_BRIGHTNESS)
         return -EINVAL;
@@ -576,7 +582,7 @@ static void my_uvc_video_complete(struct urb *urb)
     static unsigned int nArrayTemp_Size = 1000;
 
     printk("enter %s\n", __func__);
-    printk("=======urb->status: %d ======\n", urb->status);
+    //printk("=======urb->status: %d ======\n", urb->status);
     
 	switch (urb->status) {
         case 0:             //Success 
@@ -645,12 +651,9 @@ static void my_uvc_video_complete(struct urb *urb)
 
         last_fid = fid; //开始传本帧数据
 
-
         len -= src[0]; //除去头部后的数据长度
         maxlen = buf->buf.length - buf->buf.bytesused; //缓冲区最多还能存多少数据
         nbytes = min(len, maxlen);
-
-        //dest = my_uvc_q.mem + buf->buf.m.offset + buf->buf.bytesused; //目的地址
 
         memcpy(dest, src + src[0], nbytes); //复制数据
         
@@ -753,7 +756,7 @@ static int my_uvc_alloc_init_urbs(void)
     npackets = DIV_ROUND_UP(size, psize); //传多少次(向上取整)
     if (npackets == 0)
         return -ENOMEM;
-
+    
     size = my_uvc_q.urb_size = psize * npackets; //取整后新大小
 
     for (i = 0; i < MY_UVC_URBS_NUM; ++i)
@@ -1022,7 +1025,7 @@ static int my_uvc_vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_
     printk("enter %s\n", __func__);
 
     /* 1. kill all URB */
-    for (i = 0; i < MY_UVC_URBS_NUM; ++i)
+    for (i = 0; i < MY_UVC_URBS_NUM; i++)
     {
         if ((urb = my_uvc_q.urb[i]) == NULL)
             continue;
@@ -1034,6 +1037,9 @@ static int my_uvc_vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_
 
     /* 3. 设置VideoStreaming Interface为setting 0 */
     usb_set_interface(my_uvc_udev, my_uvc_streaming_intf, 0);
+    /*这里就是probe()里为什么要两次打印才正确显示的bug,
+    应用层在开始会在开始调用一次my_uvc_vidioc_streamoff,
+    导致对应的接口变为0,因此第一次读取参数会失败*/
 
     return 0;
 }
@@ -1102,11 +1108,15 @@ static int my_uvc_probe(struct usb_interface *intf, const struct usb_device_id *
     my_uvc_udev = interface_to_usbdev(intf); //获取usb设备
     if (cnt == 1) //获取编号
         my_uvc_control_intf = intf->cur_altsetting->desc.bInterfaceNumber;
-    else if (cnt == 2)
+    if (cnt == 2)
         my_uvc_streaming_intf = intf->cur_altsetting->desc.bInterfaceNumber;
 
     if (cnt == 2)
     {
+        my_uvc_printk_streaming_params(); //为了确定带宽dwMaxVideoFrameSize,使用哪一个setting(可屏蔽)
+        /* 需要放在video_register_device前,因为video_register_device后调用
+        my_uvc_close-->my_uvc_vidioc_streamoff-->usb_set_interface,导致接口变成0,读出的值是空的*/
+        
         /* 1.分配一个video_device结构体 */
         my_uvc_vdev = video_device_alloc();
         if (NULL == my_uvc_vdev)
@@ -1131,9 +1141,6 @@ static int my_uvc_probe(struct usb_interface *intf, const struct usb_device_id *
         else
             printk("video_register_device ok.\n");
 
-        /* 为了确定带宽dwMaxVideoFrameSize,使用哪一个setting */
-        my_uvc_printk_streaming_params(); //实测要第二次才正确显示,BUG?
-        my_uvc_printk_streaming_params(); 
     }
     return 0;
 }
