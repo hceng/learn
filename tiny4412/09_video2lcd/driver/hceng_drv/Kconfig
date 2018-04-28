@@ -1,0 +1,26 @@
+#
+# Backlight && LCD && UVC device configuration
+#
+
+menu "Hceng add driver"
+	config BACKLIGHT
+	tristate "Backlight support"
+	default y  
+	help
+	  This is backlight driver to tiny4412 from hceng.
+	 
+	config LCD
+	tristate "LCD support"
+	depends on BACKLIGHT 
+	default y 
+	help
+	  This is LCD driver to tiny4412 from hceng. 
+	  
+	config UVC
+	tristate "UVC support"
+	depends on BACKLIGHT && LCD
+	default y 
+	help
+	  This is UVC driver to tiny4412 from hceng.
+	  
+endmenu
