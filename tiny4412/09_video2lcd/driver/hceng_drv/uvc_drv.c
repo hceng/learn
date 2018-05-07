@@ -326,15 +326,10 @@ static int my_uvc_vidioc_reqbufs(struct file *file, void *priv, struct v4l2_requ
 /* 查询缓存状态, 比如地址信息(APP可以用mmap进行映射)  */
 static int my_uvc_vidioc_querybuf(struct file *file, void *priv, struct v4l2_buffer *v4l2_buf)
 {
-    int ret = 0;
-
     printk("enter %s\n", __func__);
 
     if (v4l2_buf->index >= my_uvc_q.count)
-    {
-        ret = -EINVAL;
-        goto done;
-    }
+		return -EINVAL;
 
     memcpy(v4l2_buf, &my_uvc_q.buffer[v4l2_buf->index].buf, sizeof(*v4l2_buf));
 
@@ -358,8 +353,7 @@ static int my_uvc_vidioc_querybuf(struct file *file, void *priv, struct v4l2_buf
     }
 #endif
 
-done:
-    return ret;
+    return 0;
 }
 
 /* 把传入的缓冲区放入队列, 底层的硬件操作函数将会把数据放入这个队列的缓存 */
