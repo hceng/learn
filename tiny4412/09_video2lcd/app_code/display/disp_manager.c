@@ -4,7 +4,7 @@
 #include <video_manager.h>
 #include <disp_manager.h>
 
-static p_video_mem video_mem_head = NULL;;
+//static p_video_mem video_mem_head = NULL;;
 static p_disp_operations disp_ops_head = NULL;
 static p_disp_operations default_disp_ops= NULL;
 
@@ -75,7 +75,7 @@ void select_and_init_disp_dev(char *name, char *dev_name)
 }
 
 //返回select_and_init_disp_dev()得到的显示模块
-p_disp_operations get_default_Disp_dev(void)
+p_disp_operations get_default_disp_dev(void)
 {
 	return default_disp_ops;
 }
@@ -115,6 +115,7 @@ void flush_pixel_datas_to_dev(p_pixel_datas p_pixel_data)
     default_disp_ops->show_page(p_pixel_data);
 }
 
+#if 0
 //为加快显示速度,事先在缓存中构造好显示的页面的数据
 int alloc_video_mem(int num)
 {
@@ -398,6 +399,7 @@ void clear_video_mem_region(p_video_mem p_video_m, p_layout p_lay, unsigned int 
 	}
 
 }
+#endif
 
 int display_init(void)
 {

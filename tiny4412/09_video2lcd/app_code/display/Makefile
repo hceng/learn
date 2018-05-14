@@ -1,2 +1,2 @@
-obj-y += lcd.o
 obj-y += disp_manager.o
+obj-y += lcd.o

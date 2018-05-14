@@ -4,6 +4,7 @@
 
 #include <video_manager.h>
 
+#if 0
 //表示显示的区域
 typedef struct layout {
 	int top_left_x;  //区域左上角x坐标
@@ -35,9 +36,11 @@ typedef struct video_mem {
 	pixel_datas pixel_data;      //内存: 用来存储图像
 	struct video_mem *p_next;    //链表 
 }video_mem, *p_video_mem;
+#endif
+
 
 typedef struct disp_operations {
-	char *name;                  //显示模块的名字
+	char *name;                   //显示模块的名字
 	int x_res;                    //X分辨率 
 	int y_res;                    //Y分辨率
 	int bpp;                      //一个像素用多少位来表示 
@@ -55,18 +58,21 @@ int register_display_ops(p_disp_operations p_disp_ops);
 void show_disp_ops(void);
 p_disp_operations get_disp_ops(char *name);
 void select_and_init_disp_dev(char *name, char *dev_name);
-p_disp_operations get_default_Disp_dev(void);
+p_disp_operations get_default_disp_dev(void);
 int get_disp_resolution(int *x_res, int *y_res, int *bpp);
 int get_video_buf_for_disp(p_video_buffer p_frame_buf);
 void flush_pixel_datas_to_dev(p_pixel_datas p_pixel_data);
+int display_init(void);
+int fb_init(void);
+
+#if 0
 int alloc_video_mem(int num);
 p_video_mem get_video_mem(int id, int cur);
 void put_video_mem(p_video_mem p_video_m);
 p_video_mem get_dev_video_mem(void);
 void clear_video_mem(p_video_mem p_video_m, unsigned int color);
 void clear_video_mem_region(p_video_mem p_video_m, p_layout p_lay, unsigned int color);
-int display_init(void);
-int fb_init(void);
+#endif
 
 #endif
 

@@ -12,17 +12,6 @@ static int is_support_mjpeg2rgb(int pixel_format_in, int pixel_format_out);
 static int mjpeg2rgb_convert(p_video_buffer video_buf_in, p_video_buffer video_buf_out);
 static int mjpeg2rgb_convert_exit(p_video_buffer video_buf_out);
 
-
-static int is_support_mjpeg2rgb(int pixel_format_in, int pixel_format_out)
-{
-    if (pixel_format_in != V4L2_PIX_FMT_MJPEG)
-        return 0;
-    if ((pixel_format_out != V4L2_PIX_FMT_RGB565) && (pixel_format_out != V4L2_PIX_FMT_RGB32))
-        return 0;
-
-    return 1;
-}
-
 //jdatasrc-tj.c
 extern void jpeg_mem_src_tj(j_decompress_ptr, unsigned char *, unsigned long);
 
@@ -47,26 +36,31 @@ static void my_error_exit(j_common_ptr cinfo)
 	longjmp(my_err->setjmp_buffer, 1);
 }
 
+static int is_support_mjpeg2rgb(int pixel_format_in, int pixel_format_out)
+{
+    if (pixel_format_in != V4L2_PIX_FMT_MJPEG)
+        return 0;
+    if ((pixel_format_out != V4L2_PIX_FMT_RGB565) && (pixel_format_out != V4L2_PIX_FMT_RGB32))
+        return 0;
+
+    return 1;
+}
+
 //把已经从JPG文件取出的一行像素数据,转换为能在显示设备上使用的格式
 static int covert_one_line(int width, int scr_bpp, int dst_bpp, 
                                   unsigned char *scr_datas, unsigned char *dst_datas)
 {
-	unsigned int red;
-	unsigned int green;
-	unsigned int blue;
-	unsigned int color;
-
-	unsigned short *dst_datas_16bpp = (unsigned short *)dst_datas;
-	unsigned int   *dst_datas_32bpp = (unsigned int *)dst_datas;
-
 	int i;
 	int pos = 0;
-
+	unsigned int red, green, blue, color;
+	unsigned short *dst_datas_16bpp = (unsigned short *)dst_datas;
+	unsigned int   *dst_datas_32bpp = (unsigned int *)dst_datas;
+	
 	if (scr_bpp != 24)
 		return -1;
-
-	if (scr_bpp == 24)
-		memcpy(dst_datas, scr_datas, width*3);
+	
+	if (dst_bpp == 24)
+		memcpy(dst_datas, scr_datas, width*3); //len=width*(8+8+8)/8=width*3
 	else
 	{
 		for (i = 0; i < width; i++)
@@ -101,13 +95,13 @@ static int mjpeg2rgb_convert(p_video_buffer video_buf_in, p_video_buffer video_b
     
     int row_stride; //一行的数据
     my_error_mgr jerr;
-    unsigned char *p_dest;
+    unsigned char *p_dest; 
     unsigned char *line_buf = NULL;
     p_pixel_datas p_pixel_data = &video_buf_out->pixel_datas;
 
     //1.分配jpeg对象结构体空间,并初始化(使用自定义的出错处理方式)
     struct jpeg_decompress_struct cinfo;
-    jpeg_create_decompress(&cinfo); //初始化cinfo结构体
+    
     cinfo.err = jpeg_std_error(&jerr.pub); //绑定jerr错误结构体至jpeg对象结构体
     jerr.pub.error_exit = my_error_exit; //设置为自己定义的出错处理函数
 
@@ -123,7 +117,8 @@ static int mjpeg2rgb_convert(p_video_buffer video_buf_in, p_video_buffer video_b
 
 		return -1;
 	}
-    
+    jpeg_create_decompress(&cinfo); //初始化cinfo结构体
+	
     //2.指定解压数据源据(内存中的数据)
     jpeg_mem_src_tj(&cinfo, video_buf_in->pixel_datas.pixel_datas_addr, video_buf_in->pixel_datas.total_bytes);
 
@@ -151,10 +146,9 @@ static int mjpeg2rgb_convert(p_video_buffer video_buf_in, p_video_buffer video_b
 	    p_pixel_data->pixel_datas_addr = malloc(p_pixel_data->total_bytes);
         if (NULL == p_pixel_data->pixel_datas_addr)
             return -1;
-        else 
-            p_dest = p_pixel_data->pixel_datas_addr;
 	}
-
+	p_dest = p_pixel_data->pixel_datas_addr;
+	
     //循环调用jpeg_read_scanlines来一行一行地获得解压的数据
     while (cinfo.output_scanline < cinfo.output_height) 
 	{
@@ -168,7 +162,7 @@ static int mjpeg2rgb_convert(p_video_buffer video_buf_in, p_video_buffer video_b
 
     //7.解压完毕,释放资源
     free(line_buf);
-    //jpeg_finish_decompress(&cinfo); 
+    //jpeg_finish_decompress(&cinfo); //实测加上很大概率启动报错
 	//http://blog.sina.com.cn/s/blog_78ea87380101g42c.html
     jpeg_destroy_decompress(&cinfo);
 	

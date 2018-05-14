@@ -81,8 +81,10 @@ static int v4l2_init_device(char *dev_name, p_video_device p_video_dev)
 
     //2.VIDIOC_ENUM_FMT:查询支持哪些种格式
     memset(&v4l2_format_des, 0, sizeof(struct v4l2_fmtdesc));
+	v4l2_format_des.type = V4L2_BUF_TYPE_VIDEO_CAPTURE; //不可省
     while (0 == ioctl(fd, VIDIOC_ENUM_FMT, &v4l2_format_des))
     {
+
         if (v4l2_format_des.type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
             break;
 
@@ -106,11 +108,11 @@ static int v4l2_init_device(char *dev_name, p_video_device p_video_dev)
     }
 
     //3.VIDIOC_S_FMT:设置设备使用何种格式
-    get_disp_resolution(&lcd_width, &lcd_heigt, &lcd_bpp);
+    get_disp_resolution(&lcd_width, &lcd_heigt, &lcd_bpp); //获取LCD信息
     memset(&v4l2_fmt, 0, sizeof(struct v4l2_format));
     v4l2_fmt.type                = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    //v4l2_fmt.fmt.pix.pixelformat = p_video_dev->pixel_format;
-    v4l2_fmt.fmt.pix.pixelformat = p_video_dev->pixel_format = V4L2_PIX_FMT_MJPEG;
+    v4l2_fmt.fmt.pix.pixelformat = p_video_dev->pixel_format;
+    //v4l2_fmt.fmt.pix.pixelformat = p_video_dev->pixel_format = V4L2_PIX_FMT_MJPEG;
     v4l2_fmt.fmt.pix.width       = lcd_width;
     v4l2_fmt.fmt.pix.height      = lcd_heigt;
     v4l2_fmt.fmt.pix.field       = V4L2_FIELD_ANY;

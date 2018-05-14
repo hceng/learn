@@ -65,7 +65,7 @@ static int fb_device_init(char *dev_name)
 
 	line_width  = fb_var.xres * fb_var.bits_per_pixel / 8;
 	pixel_width = fb_var.bits_per_pixel / 8;
-	
+
 	return 0;
 }
 

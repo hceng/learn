@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <signal.h>
 
 #include <config.h>
 #include <process.h>
@@ -23,9 +24,16 @@ static void print_help(void)
     printf("The LCD displays the image captured by the camera.\n");
     printf("Options:\n");
     printf("\t" "-v" "\t\tSelect the camera device, default: /dev/video0\n");
-    printf("\t" "-f" "\t\tSelect the lcd display device, default: /dev/fb0\n");
-    printf("\t" "-c" "\t\tSelect the vga display device, default: /dev/crt\n");
+    printf("\t" "-d" "\t\tSelect the lcd display device, default: /dev/fb0\n");
     printf("\t" "-h" "\t\tDisplay this information.\n");
+}
+
+
+static void stop_app(int signo)
+{
+    printf("\nexit.\n");
+
+    _exit(0);
 }
 
 
@@ -43,43 +51,47 @@ int main(int argc, char **argv)
     p_video_buffer video_buf_cur;
     video_buffer video_buf, convert_buf, zoom_buf, frame_buf;
 
-    char *get_argv[3] = {};
+    char *get_argv[2] = {};
+
+    signal(SIGINT, stop_app);
 
     //0.传入参数判断
     for(i = 1; i < argc; i++)
     {
         if (!strcmp("-v", argv[i]))
-            get_argv[0] = argv[i + 1];
-        else if (!strcmp("-f", argv[i]))
-            get_argv[1] = argv[i + 1];
-        else if (!strcmp("-c", argv[i]))
-            get_argv[2] = argv[i + 1];
+        {
+            if(NULL == argv[i + 1])
+            {
+                print_help();
+                return -1;
+            }
+            else
+                get_argv[0] = argv[i + 1];
+        }
+        else if (!strcmp("-d", argv[i]))
+        {
+            if(NULL == argv[i + 1])
+            {
+                print_help();
+                return -1;
+            }
+            else
+                get_argv[1] = argv[i + 1];
+        }
         else if (!strcmp("-h", argv[i]))
         {
             print_help();
             return 0;
         }
     }
-    if((argc > 1) && (get_argv[1] != NULL)  && (get_argv[2] != NULL))
-    {
-        printf("Can't select both LCD and VGA devices\n");
-        print_help();
-        return -1;
-    }
-
-    if ((argc > 1) && (get_argv[0] == NULL) && (get_argv[1] == NULL)  && (get_argv[2] == NULL))
-    {
-        print_help();
-        return -1;
-    }
 
     //1.初始化显示设备并获取显示设备参数
     display_init(); //注册所有显示设备(fb和crt)
 
-    if (get_argv[2] != NULL) //选择和初始化指定的显示设备
-        select_and_init_disp_dev("crt", NULL); //这个的设备名字还没确定
+    if (get_argv[1] == NULL) //选择和初始化指定的显示设备
+        select_and_init_disp_dev("lcd", "/dev/fb0"); //default:lcd的/dev/fb0
     else
-        select_and_init_disp_dev("lcd", get_argv[2]); //default:lcd的/dev/db0
+        select_and_init_disp_dev("lcd", get_argv[1]);
 
     get_disp_resolution(&lcd_width, &lcd_height, &lcd_bpp); //获取设备的分辨率和支持的bpp
     get_video_buf_for_disp(&frame_buf); //得到显存的各种信息(分辨率、bpp、大小、地址等)
@@ -99,7 +111,7 @@ int main(int argc, char **argv)
 
     //3.转换初始化
     video_convert_init(); //注册所有支持的转换方式(yuv、mjpeg、rgb)
-    //传入采集设备格式和显示设备支持格式,在链表里依次判断是否支持该格式转换s
+    //传入采集设备格式和显示设备支持格式,在链表里依次判断是否支持该格式转换
     video_conv = get_video_convert_format(pixel_formt_of_video, pixel_formt_of_disp);
     if (NULL == video_conv)
     {
@@ -118,7 +130,7 @@ int main(int argc, char **argv)
 
     memset(&video_buf, 0, sizeof(video_buf));
     memset(&convert_buf, 0, sizeof(convert_buf));
-    convert_buf.pixel_format     = pixel_formt_of_disp;
+    convert_buf.pixel_format    = pixel_formt_of_disp;
     convert_buf.pixel_datas.bpp = lcd_bpp;
 
 
@@ -139,7 +151,6 @@ int main(int argc, char **argv)
         {
             //6.格式转换
             ret = video_conv->convert(&video_buf, &convert_buf);
-            printf_debug("convert %s, ret = %d\n", video_conv->name, ret);
             if (ret)
             {
                 printf_debug("convert for %s error!\n", get_argv[0]);
@@ -172,13 +183,12 @@ int main(int argc, char **argv)
             if (!zoom_buf.pixel_datas.pixel_datas_addr)
             {
                 zoom_buf.pixel_datas.pixel_datas_addr = malloc(zoom_buf.pixel_datas.total_bytes);
+                if (NULL == zoom_buf.pixel_datas.pixel_datas_addr)
+                    return -1;
             }
 
             pic_zoom(&video_buf_cur->pixel_datas, &zoom_buf.pixel_datas);
             video_buf_cur = &zoom_buf;
-
-            //if (zoom_buf.pixel_datas.pixel_datas_addr)
-            //free(zoom_buf.pixel_datas.pixel_datas_addr);
         }
 
         //合并进framebuffer

@@ -4,7 +4,7 @@
 #include <video_manager.h>
 
 
-//把小图片合并入大图片里
+//将图片放在Framebuffer指定位置
 int pic_merge(int x, int y, p_pixel_datas small_pic, p_pixel_datas big_pic)
 {
 	int i;
@@ -17,6 +17,7 @@ int pic_merge(int x, int y, p_pixel_datas small_pic, p_pixel_datas big_pic)
 		return -1;
 
 	scr = small_pic->pixel_datas_addr;
+	//目标地址的偏移就是指定坐标之前的所有数据:y*每行数据+x的数据
 	dst = big_pic->pixel_datas_addr + y * big_pic->line_bytes + x * big_pic->bpp / 8;
 	for (i = 0; i < small_pic->height; i++)
 	{
