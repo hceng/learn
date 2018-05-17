@@ -1,46 +1,61 @@
+# 1.定义"PHONY"表示目标(目前包含一个目标:__build)
 PHONY := __build
+
+# 2.定义目标"__build"内容是下面的所有操作
 __build:
 
-
+# 3.定义"obj-y"表示当前路径的目标文件,定义"subdir-y"表示当前路径下目录的目标文件
 obj-y :=
 subdir-y :=
 
+# 4.包含当前路径的Makefile(为了获取"obj-y"的内容)
 include Makefile
 
-# obj-y := a.o b.o c/ d/
-# $(filter %/, $(obj-y))   : c/ d/
-# __subdir-y  : c d
-# subdir-y    : c d
+# 5. 得到当前路径下各目录名
+# 5.1filter函数从obj-y中筛选出含"/"的内容,即目录
+# 5.2patsubst函数将上述结果中的"/"替换为空,subdir-y即为当前路径的目录名(不含"/")
 __subdir-y	:= $(patsubst %/,%,$(filter %/, $(obj-y)))
 subdir-y	+= $(__subdir-y)
+#实测结果:第一次为[video convert process display],后面每次都为空
+#$(warning ------debug info:subdir-y=$(subdir-y)------)
 
-# c/built-in.o d/built-in.o
+# 6.把"obj-y"都加上"/built-in.o"后缀
 subdir_objs := $(foreach f,$(subdir-y),$(f)/built-in.o)
+#实测结果:第一次为[video/built-in.o convert/built-in.o ……],后面每次都为空
+#$(warning ------debug info:subdir_objs=$(subdir_objs)------)
 
-# a.o b.o
+# 7.得到"obj-y"中的非文件夹文件(即各个.o文件)
 cur_objs := $(filter-out %/, $(obj-y))
+
+# 8.把前面的*.o文件变为.*.o.d,并确保文件存在于当前路径
 dep_files := $(foreach f,$(cur_objs),.$(f).d)
 dep_files := $(wildcard $(dep_files))
 
+# 9.如果"dep_files"不为空,则包含(即包含了.d依赖文件,保证头文件修改后程序会重新编译)
 ifneq ($(dep_files),)
   include $(dep_files)
 endif
 
-
+# 10.新增目标(目前包含两个目标:__build和subdir-y的各个成员)
 PHONY += $(subdir-y)
 
-
+# 11.目标__build依赖于subdir-y各个成员和built-in.o
 __build : $(subdir-y) built-in.o
 
+# 12.subdir-y又依赖顶层目录下的Makefile.build(即本Makefile.build)
 $(subdir-y):
 	make -C $@ -f $(TOPDIR)/Makefile.build
 
+# 13.built-in.o依赖当前路径下的.o和目录下的built-in.o(即将当前路径下的.o链接成built-in.o)
 built-in.o : $(cur_objs) $(subdir_objs)
 	$(LD) -r -o $@ $^
 
+# 14.定义dep_file为所有的依赖
 dep_file = .$@.d
 
+# 15.所有的.o依赖于所有的.c,编译过程生成对应.d文件
 %.o : %.c
 	$(CC) $(CFLAGS) -Wp,-MD,$(dep_file) -c -o $@ $<
-	
+
+# 16..PHONY目标等于定义的PHONY 	
 .PHONY : $(PHONY)

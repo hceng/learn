@@ -1,3 +1,4 @@
+# 1.指定当前目录下需要编进程序去的文件
 obj-y += color.o
 obj-y += yuv2rgb.o
 obj-y += rgb2rgb.o
