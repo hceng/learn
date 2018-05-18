@@ -37,7 +37,7 @@ obj-y += process/
 obj-y += display/
 
 # 7. 目标all:
-# 7.1执行指定路径下的文件(即本程序的Makefile.build)
+# 7.1在-C指定目录下,执行指定路径下的文件(即在本路径执行Makefile.build)
 # 7.2依赖"built-in.o"生成最终的目标文件
 all : 
 	make -C ./ -f $(TOPDIR)/Makefile.build

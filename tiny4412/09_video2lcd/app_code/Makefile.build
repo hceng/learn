@@ -27,7 +27,9 @@ subdir_objs := $(foreach f,$(subdir-y),$(f)/built-in.o)
 # 7.得到"obj-y"中的非文件夹文件(即各个.o文件)
 cur_objs := $(filter-out %/, $(obj-y))
 
-# 8.把前面的*.o文件变为.*.o.d,并确保文件存在于当前路径
+# 8. 得到依赖文件(.d文件)
+# 8.1foreach把前面的*.o文件变为.*.o.d(这是当前目录Makefile提供的数据)
+# 8.2wildcard根据这些.d名字在当前路径查找,得到真正存在的.d文件
 dep_files := $(foreach f,$(cur_objs),.$(f).d)
 dep_files := $(wildcard $(dep_files))
 
@@ -42,7 +44,7 @@ PHONY += $(subdir-y)
 # 11.目标__build依赖于subdir-y各个成员和built-in.o
 __build : $(subdir-y) built-in.o
 
-# 12.subdir-y又依赖顶层目录下的Makefile.build(即本Makefile.build)
+# 12.对subdir-y的每个成员(即目录),都调用Makefile.build
 $(subdir-y):
 	make -C $@ -f $(TOPDIR)/Makefile.build
 
