@@ -1,0 +1,79 @@
+
+board_r.c(common\board_r.c)
+	init_sequence_r[] 
+		board_late_init(board\rockchip\rk32xx\rk32xx.c)	
+			pmic_init
+			board_fbt_preboot(board\rockchip\common\rkboot\fastboot.c)
+				rockchip_display_init
+				rockchip_show_logo //核心
+					display_logo(drivers\video\rockchip_display.c)
+						display_init
+							conn_funcs->init(rockchip_vop_init) //时钟设置和VOP初始化
+								rkclk_lcdc_dclk_pll_sel
+								rkclk_lcdc_clk_set
+						display_set_plane
+						display_enable //核心
+							crtc_funcs->prepare(rockchip_vop_prepare)
+							conn_funcs->prepare(rockchip_dw_mipi_dsi_prepare)
+								dw_mipi_dsi_vop_routing
+								rockchip_dw_dsi_pre_init
+								rockchip_dw_dsi_controller_init
+									rockchip_dw_dsi_host_init
+										dw_mipi_dsi_init
+											dw_mipi_dsi_dpi_config
+											dw_mipi_dsi_packet_handler_config
+											dw_mipi_dsi_video_mode_config
+											dw_mipi_dsi_video_packet_config(
+											dw_mipi_dsi_command_mode_config
+											dw_mipi_dsi_set_mode
+											dw_mipi_dsi_line_timer_config
+											dw_mipi_dsi_vertical_timing_config
+											dw_mipi_dsi_dphy_timing_config
+											dw_mipi_dsi_dphy_interface_config
+											dw_mipi_dsi_clear_err
+										mipi_dphy_init
+										dw_mipi_dsi_phy_init
+							rockchip_panel_prepare
+								panel->funcs->prepare(rockchip_dsi_panel_prepare)
+									fdtdec_set_gpio
+									rockchip_dsi_panel_send_cmds
+							crtc_funcs->enable(rockchip_vop_enable) //standby disable
+							conn_funcs->enable(rockchip_dw_mipi_dsi_enable)
+								dw_mipi_dsi_set_mode
+						rockchip_panel_enable	
+							panel->funcs->enable(rockchip_dsi_panel_enable)
+				lcd_standby
+				rk_pwm_bl_config
+				
+
+//u-boot\drivers\video\rockchip_dsi_panel.c
+const struct rockchip_panel_funcs rockchip_dsi_panel_funcs = {
+	.init		= rockchip_dsi_panel_init,
+	.deinit		= rockchip_dsi_panel_deinit,
+	.prepare	= rockchip_dsi_panel_prepare,
+	.unprepare	= rockchip_dsi_panel_unprepare,
+	.enable		= rockchip_dsi_panel_enable,
+	.disable	= rockchip_dsi_panel_disable,
+};
+
+//u-boot\drivers\video\rockchip_vop.c	
+const struct rockchip_crtc_funcs rockchip_vop_funcs = {
+	.init = rockchip_vop_init,
+	.set_plane = rockchip_vop_set_plane,
+	.prepare = rockchip_vop_prepare,
+	.enable = rockchip_vop_enable,
+	.disable = rockchip_vop_disable,
+	.fixup_dts = rockchip_vop_fixup_dts,
+};
+
+//u-boot\drivers\video\rockchip-dw-mipi-dsi.c
+const struct rockchip_connector_funcs rockchip_dw_mipi_dsi_funcs = {
+	.init = rockchip_dw_mipi_dsi_init,
+	.deinit = rockchip_dw_mipi_dsi_deinit,
+	.prepare = rockchip_dw_mipi_dsi_prepare,
+	.enable = rockchip_dw_mipi_dsi_enable,
+	.disable = rockchip_dw_mipi_dsi_disable,
+	.transfer = rockchip_dw_mipi_dsi_transfer,
+};
+
+

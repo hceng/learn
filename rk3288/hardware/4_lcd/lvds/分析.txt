@@ -1,0 +1,28 @@
+start.S(u-boot\arch\arm\cpu\armv7\start.S)
+	cpu_init_crit
+		lowlevel_init(u-boot\arch\arm\cpu\armv7\rk32xx\lowlevel_init.S)
+			rkclk_set_pll //设置Codec PLL为384MHZ
+
+
+board_r.c(u-boot_aio_rk3288\u-boot\common\board_r.c)
+	init_sequence_r[] //初始化函数表
+		board_late_init(u-boot\board\rockchip\rk32xx\rk32xx.c)	
+			pmic_init //Power Management IC的初始化,包含了I2C操作
+			board_fbt_preboot 
+				lcd_enable_logo
+				drv_lcd_init //核心
+					lcd_init(u-boot_aio_rk3288\u-boot\common\lcd.c)
+						lcd_ctrl_init(u-boot\drivers\video\rockchip_fb.c)
+								rk_fb_pwr_enable //没有核心板原理图,初步猜测是使能PMIC输出对应电源
+								rkclk_lcdc_clk_set //设置vop时钟
+								rk_lcdc_init(u-boot\drivers\video\rk32_lcdc.c) 
+								rk_lcdc_load_screen //屏参的设置等
+									rk32_lvds_en //LVDS引脚设置等
+						lcd_clear
+							lcd_logo(u-boot\common\lcd.c)
+								bitmap_plot
+									lcd_pandispaly
+										rk_lcdc_set_par(u-boot\drivers\video\rk32_lcdc.c) //Framebuffer数据
+						lcd_enable
+				lcd_standby //LCD退出待机
+				rk_pwm_bl_config //背光
