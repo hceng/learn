@@ -76,8 +76,8 @@ public class MainActivity extends AppCompatActivity {
                 .setSmallIcon(R.mipmap.ic_launcher) //设置通知ICON
                 .setContentIntent(mPendingIntent) //设置点击通知事件
                 .setAutoCancel(true) //设置点击通知后自动取消
-                .setDefaults(Notification.DEFAULT_ALL) //Notification.FLAG_SHOW_LIGHTS  Notification.DEFAULT_SOUND(需要权限)
-                .setLights(Color.BLUE, 3000, 3000); //ledARGB ledOnMS ledOffMS
+                .setDefaults(Notification.FLAG_SHOW_LIGHTS) //Notification.FLAG_SHOW_LIGHTS  Notification.DEFAULT_SOUND(需要权限)
+                .setLights(Color.BLUE, 1000, 1000); //ledARGB ledOnMS ledOffMS
 
         Notification mNotification = mBuilder.build();
 
