@@ -135,7 +135,7 @@ static int v4l2_init_device(char *dev_name, p_video_device p_video_dev)
     v4l2_req_buf.memory = V4L2_MEMORY_MMAP;
 
     ret = ioctl(fd, VIDIOC_REQBUFS, &v4l2_req_buf);
-    if (ret <= 0)
+    if (ret < 0)
     {
         printf_debug("Can't VIDIOC_REQBUFS device\n");
         goto err_exit;
