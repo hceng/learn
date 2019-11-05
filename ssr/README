@@ -1,0 +1,17 @@
+# Server：
+```
+wget --no-check-certificate -O Configuring_ubuntu.sh https://raw.githubusercontent.com/100askTeam/DevelopmentEnvConf/master/Configuring_ubuntu.sh && sudo chmod +x shadowsocks-all.sh && sudo ./shadowsocks-all.sh
+```
+
+# Client:
+Android: [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android/releases)
+iPhone/iPad: 
+Windows: [shadowsocks-windows](https://github.com/shadowsocks/shadowsocks-windows/releases)
+MacOS: [ShadowsocksX-NG](https://github.com/shadowsocks/ShadowsocksX-NG/releases)
+Linux: [CharlesScripts](https://github.com/the0demiurge/CharlesScripts/blob/master/charles/bin/ssr)
+
+# Bookmark:
+- [IP availability detection tool](https://www.toolsdaquan.com/ipcheck/)
+- [bandwagonhost](https://bandwagonhost.com/index.php)
+- [vultr](https://vultr.com/)
+- [AEAD Ciphers](https://shadowsocks.org/en/spec/AEAD-Ciphers.html)
