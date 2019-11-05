@@ -1,11 +1,11 @@
 # Server：
 ```
-wget --no-check-certificate -O Configuring_ubuntu.sh https://raw.githubusercontent.com/100askTeam/DevelopmentEnvConf/master/Configuring_ubuntu.sh && sudo chmod +x shadowsocks-all.sh && sudo ./shadowsocks-all.sh
+wget --no-check-certificate -O shadowsocks-all.sh https://raw.githubusercontent.com/hceng/learn/master/ssr/shadowsocks-all.sh && sudo chmod +x shadowsocks-all.sh && sudo ./shadowsocks-all.sh
 ```
 
 # Client:
 Android: [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android/releases)
-iPhone/iPad: 
+iPhone/iPad: [Shadowrocket(freeluffy).ipa](https://github.com/hceng/learn/blob/master/ssr/Shadowrocket(freeluffy).ipa)
 Windows: [shadowsocks-windows](https://github.com/shadowsocks/shadowsocks-windows/releases)
 MacOS: [ShadowsocksX-NG](https://github.com/shadowsocks/ShadowsocksX-NG/releases)
 Linux: [CharlesScripts](https://github.com/the0demiurge/CharlesScripts/blob/master/charles/bin/ssr)
