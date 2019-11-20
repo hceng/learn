@@ -1,7 +1,11 @@
 # Server：
+1.Install wget
 ```
 yum -y install wget  //Centos
 apt-get install wget  //Ubuntu
+```
+2.Download and Run
+```
 wget --no-check-certificate -O shadowsocks-all.sh https://raw.githubusercontent.com/hceng/learn/master/ssr/shadowsocks-all.sh && sudo chmod +x shadowsocks-all.sh && sudo ./shadowsocks-all.sh
 ```
 
