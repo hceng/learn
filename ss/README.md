@@ -6,7 +6,7 @@ apt-get install wget  //Ubuntu
 ```
 2.Download and Run
 ```
-wget --no-check-certificate -O shadowsocks-all.sh https://raw.githubusercontent.com/hceng/learn/master/ssr/shadowsocks-all.sh && sudo chmod +x shadowsocks-all.sh && sudo ./shadowsocks-all.sh
+wget --no-check-certificate -O shadowsocks-all.sh https://raw.githubusercontent.com/hceng/learn/master/ss/shadowsocks-all.sh && sudo chmod +x shadowsocks-all.sh && sudo ./shadowsocks-all.sh
 ```
 
 # Client:
