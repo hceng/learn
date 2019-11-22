@@ -8,6 +8,11 @@ apt-get install wget  //Ubuntu
 ```
 wget --no-check-certificate -O shadowsocks-all.sh https://raw.githubusercontent.com/hceng/learn/master/ss/shadowsocks-all.sh && sudo chmod +x shadowsocks-all.sh && sudo ./shadowsocks-all.sh
 ```
+3.Run bbr
+```
+wget --no-check-certificate -O shadowsocks-all.sh https://raw.githubusercontent.com/hceng/learn/master/ss/bbr.sh && sudo chmod +x shadowsocks-all.sh && sudo ./shadowsocks-all.sh
+```
+
 
 # Client:
 - Android: [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android/releases)
