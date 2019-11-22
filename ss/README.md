@@ -10,7 +10,7 @@ wget --no-check-certificate -O shadowsocks-all.sh https://raw.githubusercontent.
 ```
 3.Run bbr
 ```
-wget --no-check-certificate -O shadowsocks-all.sh https://raw.githubusercontent.com/hceng/learn/master/ss/bbr.sh && sudo chmod +x shadowsocks-all.sh && sudo ./shadowsocks-all.sh
+wget --no-check-certificate -O bbr.sh https://raw.githubusercontent.com/hceng/learn/master/ss/bbr.sh && sudo chmod +x bbr.sh && sudo ./bbr.sh
 ```
 
 
