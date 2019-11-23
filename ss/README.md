@@ -58,7 +58,7 @@ lsof -i -n -P | egrep ':12345.+ESTABLISHED'
 
 # Client:
 - Android: [shadowsocks-android](https://github.com/shadowsocks/shadowsocks-android/releases)
-- iPhone/iPad: [Shadowrocket(freeluffy).ipa](https://github.com/hceng/learn/blob/master/ssr/Shadowrocket(freeluffy).ipa)
+- iPhone/iPad: [Shadowrocket(freeluffy).ipa](https://github.com/hceng/learn/blob/master/ss/APP/Shadowrocket(freeluffy).ipa)
 - Windows: [shadowsocks-windows](https://github.com/shadowsocks/shadowsocks-windows/releases)
 - MacOS: [ShadowsocksX-NG](https://github.com/shadowsocks/ShadowsocksX-NG/releases)
 - Linux: [CharlesScripts](https://github.com/the0demiurge/CharlesScripts/blob/master/charles/bin/ssr)

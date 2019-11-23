@@ -143,6 +143,7 @@ if __name__ == "__main__":
     maildata = MailData()
     getConfig(appdata, webdata, maildata)
 
+    os.system("timedatectl set-timezone Asia/Shanghai")  # 修改时区
     os.system("ntpdate ntp1.aliyun.com")  # 同步时间
     localtime = time.asctime(time.localtime(time.time()))
     print(localtime + " - SSPort start!")
