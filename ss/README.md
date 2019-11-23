@@ -21,13 +21,18 @@ tar zxvf Python-3.6.3.tgz
 cd ./Python-3.6.3 && ./configure prefix=/usr/local/python3 && make && make install
 
 //b.Download SSPort
+cd ~
 wget --no-check-certificate -O SSPort.py https://raw.githubusercontent.com/hceng/learn/master/ss/SSPort/SSPort.py 
 wget --no-check-certificate -O config.ini https://raw.githubusercontent.com/hceng/learn/master/ss/SSPort/config.ini
 
 //c.Modify configuration file:IP and Email
 
 //d.Self-start
-wget --no-check-certificate -O autostart.sh https://raw.githubusercontent.com/hceng/learn/master/ss/SSPort/autostart.sh  && sudo chmod +x autostart.sh && mv autostart.sh /etc/init.d/ && systemctl enable autostart.sh
+wget --no-check-certificate -O autostart.sh https://raw.githubusercontent.com/hceng/learn/master/ss/SSPort/autostart.sh  && sudo chmod +x autostart.sh && mv autostart.sh /etc/init.d/ && chkconfig --add autostart.sh && chkconfig autostart.sh on
+
+//chkconfig --list
+//chkconfig autostart.sh off
+//chkconfig --del autostart.sh
 ```
 
 5.Others
@@ -42,9 +47,8 @@ wget --no-check-certificate -O autostart.sh https://raw.githubusercontent.com/hc
 yum install lsof -y  //CentOs
 apt-get install lsof -y //Ubuntu
 
-lsof -i -n -P | egrep -c ':1080.+ESTABLISHED'  //Port:1080
-
-lsof -i -n -P | egrep ':1080.+ESTABLISHED'
+lsof -i -n -P | egrep -c ':12345.+ESTABLISHED'  //Port:12345
+lsof -i -n -P | egrep ':12345.+ESTABLISHED'
 ```
 
 - Uninstall：

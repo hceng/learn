@@ -50,7 +50,7 @@ def getSSConfig(filepath, num):
     return str
 
 def getConfig(appdata, webdata, maildata):
-    config_file = "./config.ini"
+    config_file = "/root/config.ini"
     config_data = ConfigParser()
     config_data.read(config_file)
 
@@ -157,7 +157,7 @@ if __name__ == "__main__":
                 if (webdata.InternalICMP == "fail"):
                     # ip被封
                     maildata.Subject = "VPS IP Error"
-                    maildata.Content = "An IP error was detected.\n\rPlease contact the administrator to resolve it."
+                    maildata.Content = appdata.ServerIP + ": An IP error was detected.\n\rPlease contact the administrator to resolve it."
                     localtime = time.asctime(time.localtime(time.time()))
                     print(localtime + " - " + maildata.Subject + ":" + maildata.Content)
                     sendEmail(maildata)
@@ -169,7 +169,7 @@ if __name__ == "__main__":
                     # 端口被封
                     maildata.Subject = "VPS Port Error"
                     changePort(appdata)
-                    maildata.Content = "A port error was detected.\n\rThe new port is:" + str(appdata.ServerNewPort) + "."
+                    maildata.Content = appdata.ServerIP + ": A port error was detected.\n\rThe new port is:" + str(appdata.ServerNewPort) + "."
                     localtime = time.asctime(time.localtime(time.time()))
                     print(localtime + " - " + maildata.Subject + ":" + maildata.Content)
                     sendEmail(maildata)
