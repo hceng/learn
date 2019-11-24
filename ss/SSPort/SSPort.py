@@ -176,9 +176,9 @@ if __name__ == "__main__":
                     sendEmail(maildata)
                     SendCount = SendCount + 1
             else:
-                sleep(int(appdata.Intervals) * 60)
                 localtime = time.asctime(time.localtime(time.time()))
                 print(localtime + " - SSPort OK!")
+                sleep(int(appdata.Intervals) * 60)
         else:
             sleep(10 * 60)
             localtime = time.asctime(time.localtime(time.time()))
