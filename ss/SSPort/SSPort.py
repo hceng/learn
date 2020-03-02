@@ -49,6 +49,7 @@ def getSSConfig(filepath, num):
     str = linecache.getline(filepath, num).strip()
     return str
 
+
 def getConfig(appdata, webdata, maildata):
     config_file = "/root/config.ini"
     config_data = ConfigParser()
@@ -59,7 +60,7 @@ def getConfig(appdata, webdata, maildata):
     appdata.SendMAX = config_data['APPConfig']['SendMAX']
     appdata.ServerIP = config_data['APPConfig']['ServerIP']
     appdata.SSConfigPath = config_data['APPConfig']['SSConfigPath']
-    with open(appdata.SSConfigPath, 'r') as f: # 读json
+    with open(appdata.SSConfigPath, 'r') as f:  # 读json
         data = json.load(f)
     appdata.ServerPort = str(data["server_port"])
 
@@ -78,27 +79,31 @@ def getConfig(appdata, webdata, maildata):
 def getContent(appdata, webdata):
     InternalRequest = Request(webdata.InternalURL + appdata.ServerIP + "/" + appdata.ServerPort)
     InternalRequest.add_header("referer", webdata.Referer)
-    print()
     try:
-        InternalContent = urlopen(InternalRequest).read().decode("utf-8")
+        InternalContent = urlopen(InternalRequest, timeout=60).read().decode("utf-8")
+        StrList = InternalContent.split('"')
+        webdata.InternalICMP = StrList[3]
+        webdata.InternalTCP = StrList[7]
     except Exception as e:
         print("https://www.toolsdaquan.com/ipcheck/ fail.")
-        print("----------")
+        print("Internal debug:" + str(StrList))
         print(e)
-        print("----------")
         return -1
-    StrList = InternalContent.split('"')
-    webdata.InternalICMP = StrList[3]
-    webdata.InternalTCP = StrList[7]
 
     ForeignRequest = Request(webdata.ForeignURL + appdata.ServerIP + "/" + appdata.ServerPort)
     ForeignRequest.add_header("referer", webdata.Referer)
-    ForeignContent = urlopen(ForeignRequest).read().decode("utf-8")
-    StrList = ForeignContent.split('"')
-    webdata.ForeignICMP = StrList[7]
-    webdata.ForeignTCP = StrList[3]
-
+    try:
+        ForeignContent = urlopen(ForeignRequest, timeout=60).read().decode("utf-8")
+        StrList = ForeignContent.split('"')
+        webdata.ForeignICMP = StrList[7]
+        webdata.ForeignTCP = StrList[3]
+    except Exception as e:
+        print("https://www.toolsdaquan.com/ipcheck2/ fail.")
+        print("Foreign debug:" + str(StrList))
+        print(e)
+        return -1
     return 1
+
 
 def sendEmail(maildata):
     email_client = SMTP(maildata.SMTPHost)
@@ -125,16 +130,18 @@ def sendEmail(maildata):
 
 
 def changePort(appdata):
-    with open(appdata.SSConfigPath, 'r') as f: # 读json
+    with open(appdata.SSConfigPath, 'r') as f:  # 读json
         data = json.load(f)
 
     appdata.ServerNewPort = random.randint(9000, 65535)
     data["server_port"] = appdata.ServerNewPort
 
-    with open(appdata.SSConfigPath, 'w') as f: # 写json
+    with open(appdata.SSConfigPath, 'w') as f:  # 写json
         json.dump(data, f)
 
-    os.system("/etc/init.d/shadowsocks-python start")  # 重启SS
+    os.system("/etc/init.d/shadowsocks-python restart ")  # 重启SS
+    print("SS restart")
+
 
 if __name__ == "__main__":
 
@@ -148,14 +155,18 @@ if __name__ == "__main__":
     localtime = time.asctime(time.localtime(time.time()))
     print(localtime + " - SSPort start!")
     SendCount = 0
+    RetryCount = 0
 
     while (int(appdata.SendMAX) > SendCount):
         getConfig(appdata, webdata, maildata)
         if getContent(appdata, webdata) > 0:
+            RetryCount = 0
             if (webdata.InternalICMP == "fail"):
                 sleep(10)
                 getContent(appdata, webdata)
-                if (webdata.InternalICMP == "fail"):
+                # 20191204:出现ICMP显示错误，但SS正常，属于误报，因此这里修改判断条件
+                # if (webdata.InternalICMP == "fail"):
+                if ((webdata.InternalICMP == "fail") and (webdata.InternalTCP == "fail")):
                     # ip被封
                     maildata.Subject = "VPS IP Error"
                     maildata.Content = appdata.ServerIP + ": An IP error was detected.\n\rPlease contact the administrator to resolve it."
@@ -170,7 +181,8 @@ if __name__ == "__main__":
                     # 端口被封
                     maildata.Subject = "VPS Port Error"
                     changePort(appdata)
-                    maildata.Content = appdata.ServerIP + ": A port error was detected.\n\rThe new port is:" + str(appdata.ServerNewPort) + "."
+                    maildata.Content = appdata.ServerIP + ": A port error was detected.\n\rThe new port is:" + str(
+                        appdata.ServerNewPort) + "."
                     localtime = time.asctime(time.localtime(time.time()))
                     print(localtime + " - " + maildata.Subject + ":" + maildata.Content)
                     sendEmail(maildata)
@@ -183,4 +195,11 @@ if __name__ == "__main__":
             sleep(10 * 60)
             localtime = time.asctime(time.localtime(time.time()))
             print(localtime + " - SSPort Retry!")
+            RetryCount = RetryCount + 1
+            if (RetryCount == 6):
+                maildata.Content = appdata.ServerIP + ": Unknown error.\n\rPlease contact administrator to check and restart the service."
+                print(localtime + " - " + maildata.Subject + ":" + maildata.Content)
+                sendEmail(maildata)
+                SendCount = int(appdata.SendMAX) + 1  # 实现只发送一次
+
     print(localtime + " - SSPort END!")
